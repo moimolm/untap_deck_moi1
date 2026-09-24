@@ -1,0 +1,35 @@
+=== 取り込まれた内容 ===
+//deck-1
+4 Kotone Fujita, Started Being Cute (gim/w124-t02)
+2 かぜったい追いついてやる (gim/w124-032)
+
+//c2u 学マス | 優勝 | https://ws-tcg.com/deckrecipe/1/
+=== 作成依頼 ===
+【untap カード作成依頼】
+ゲーム: ヴァイス（WSTCG）
+デッキ: 学マス | https://ws-tcg.com/deckrecipe/1/
+untap の作業用デッキ: https://untap.in/deck/ws1
+未登録カード（1 行）:
+- GIM/W124-032 | かぜったい追いついてやる | 2枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/g/gim_w124/gim_w124_032.png
+=== フォームの中身 ===
+{
+ "mode": "new",
+ "image": "https://ws-tcg.com/wordpress/wp-content/images/cardlist/g/gim_w124/gim_w124_032.png",
+ "title": "I Will Definitely Catch Up",
+ "id": "gim/w124-032",
+ "printType": "official",
+ "orientation": "portrait",
+ "front": "[C] Draw 1."
+}
+=== Add Card を押したか ===
+false
+=== アシストの表示 ===
+GIM/W124-032 を入力しました。内容を確認して、光っている「Add Card」を押してください。
+Kotone Fujita, Started Being Cute
+GIM/W124-T02
+フォームに入力
+I Will Definitely Catch Up
+GIM/W124-032 · 新規で入力済み
+フォームに入力
+登録後にもう一度取り込む
+英語名データを書き出す

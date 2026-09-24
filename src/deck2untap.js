@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v14';
+  const C2U_VER = 'v15';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -472,7 +472,7 @@
     }));
     const val = i => info.querySelector(`input[data-i="${i}"]`).value.trim();
     const fileIn = info.querySelector('input[type=file]');
-    wireExtras(info, () => '//deck-1\n' + rows.map(([no, jp, q], i) => `${q} ${val(i) || jp}`).join('\n'),
+    wireExtras(info, () => '//deck-1\n' + rows.map(([no, jp, q], i) => `${q} ${val(i) || jp} (${no.toLowerCase()})`).join('\n'),
       () => notesText(title, '', rows.map(([no, jp], i) => [val(i), jp + '（' + no + '）']).filter(p => p[0])));
     info.querySelector('[data-a="export"]').onclick = () => {
       const all = { ...remote, ...wsDict() };
@@ -501,7 +501,8 @@
       fileIn.value = '';
     };
     info.querySelector('[data-a="copy"]').onclick = async () => {
-      const lines = rows.map(([no, jp, q], i) => `${q} ${val(i) || jp}`);
+      // (番号) を付ける：untap の Set / Release Identifier と一致すればその版、登録後の照合にも使う
+      const lines = rows.map(([no, jp, q], i) => `${q} ${val(i) || jp} (${no.toLowerCase()})`);
       await copyText(withMeta('//deck-1\n' + lines.join('\n'), title, ''));
       const left = rows.filter((r, i) => !val(i)).length;
       out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (left ? `<span style="color:#ffb454">英語名が空欄のカード ${left} 種は日本語名のまま出力しています。</span>` : '') + countCheck('//deck-1\n' + lines.join('\n'), 'ws');
@@ -736,7 +737,7 @@
     if (/\[(op|st|eb|prb|p)\d*-\d{3}\]/i.test(text)) return 'op';
     if (/^\/\/pile-public/m.test(text)) return 'dm';
     if (/\((sv|svm|svp)[^)]*\)/i.test(text)) return 'pk';
-    if (/^\d+ .*\/[A-Z]*W[A-Z]?\d+/m.test(text)) return 'ws';
+    if (/^\d+ .*\/[a-z]*w[a-z]?\d+-/im.test(text)) return 'ws';
     return '';
   };
   const HIST_KEY = 'c2u-history-v1';
@@ -788,26 +789,170 @@
       h.unshift({ at: Date.now(), game: game || guessGame(text), title: meta.title || '（名前なし）', sub: meta.sub, url: meta.url, text });
       histSet(h);
     };
+    // ヴァイス：登録済みの英語名（GitHub の ws-names.json＋この untap に保存した分）を番号で当てはめる
+    let wsNames = null;
+    const wsNamesGet = async () => (wsNames = wsNames || { ...(await wsRemote()), ...wsDict() });
+    const wsApply = (text, names) => text.replace(/^(\d+) (.+?) \(([a-z0-9]+\/[a-z0-9]+-[a-z0-9]+)\)$/gim,
+      (l, q, nm, no) => { const en = names[no.toUpperCase()]; return en ? `${q} ${en} (${no.toLowerCase()})` : l; });
+    let last = null; // 最後に取り込んだデッキ（再取り込み用）
+    const reqText = (failed, meta, g) => [
+      '【untap カード作成依頼】',
+      'ゲーム: ' + (UT_NAMES[g] || g || '不明') + (code ? '（' + code + '）' : ''),
+      'デッキ: ' + (meta.title || '（名前なし）') + (meta.url ? ' | ' + meta.url : ''),
+      'untap の作業用デッキ: ' + location.href,
+      '未登録カード（' + failed.length + ' 行）:',
+      ...failed.map(l => {
+        const m = l.match(/^(\d+) (.+?)(?: \(([^)]+)\)| \[([^\]]+)\])?$/) || [];
+        const no = (m[3] || m[4] || '').toUpperCase();
+        return '- ' + [no || '（番号なし）', m[2] || l, (m[1] || '?') + '枚', g === 'ws' && no ? wsImg(no) : ''].filter(Boolean).join(' | ');
+      }),
+    ].join('\n');
     const doImport = async (text, meta, out) => {
       if (!onDeck) throw new Error('untap のデッキ編集画面（Decks → デッキを開いた画面）で実行してください');
       const g2 = guessGame(text);
       if (game && g2 && game !== g2) throw new Error(`このデッキは${UT_NAMES[game]}ですが、取り込もうとしたのは${UT_NAMES[g2]}のデッキのようです。同じゲームのデッキ画面で実行してください`);
       out.innerHTML = '取り込み中…';
+      const g = game || g2;
+      if (g === 'ws') text = wsApply(text, await wsNamesGet());
       const failed = await autoImport(text);
+      last = { text, meta };
       if (panel.querySelector('[data-setname]').checked) setName(meta.title);
       record(text, meta);
       log('untap取り込み: ' + meta.title + ' 失敗' + failed.length);
       out.innerHTML = `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>` +
-        countCheck(text, game || g2) +
+        countCheck(text, g) +
         (failed.length ? `<div style="color:#ffb454;margin-top:4px">取り込めなかったカード ${failed.length} 行（名前を押すと調べるページが開きます）:<br>` +
-          failed.map(l => { const L = LOOK[game || g2]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(game || g2, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '');
+          failed.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` +
+          `<div style="margin-top:6px"><button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">作成依頼をコピー</button> <span class="c2u-req-out" style="opacity:.8"></span></div>` : '');
+      const rb = out.querySelector('[data-req]');
+      if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, g)); out.querySelector('.c2u-req-out').textContent = 'コピーしました。登録担当のチャットに貼ってください'; };
       renderHist();
+      return failed;
+    };
+
+    /* ---------- カード登録アシスト：Add Missing Card のフォームに自動で入力する（Add Card は人が押す） ---------- */
+    const setVal = (el, v) => {
+      const P = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(P, 'value').set.call(el, v);
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const until = async (fn, ms = 6000) => { for (let t = 0; t < ms; t += 150) { const r = fn(); if (r) return r; await w(150); } return null; };
+    // 「Add Missing Card」で始まり、入力欄やボタンを含むいちばん内側の枠
+    const modal = () => [...document.querySelectorAll('div')].filter(d => d.offsetParent !== null && /^Add Missing Card/.test(d.innerText.trim()) && d.querySelector('input,button,select,textarea'))
+      .sort((a, b) => a.innerText.length - b.innerText.length)[0];
+    const fieldBy = (root, label, sel) => { // ラベル文字の近くの入力欄
+      const lab = [...root.querySelectorAll('*')].find(e => e.children.length === 0 && e.textContent.trim() === label);
+      let b = lab; for (let i = 0; i < 5 && b; i++) { b = b.parentElement; const f = b && b.querySelector(sel); if (f) return f; }
+      return null;
+    };
+    const pickOpt = (s, re) => { const o = [...s.options].find(x => re.test(x.textContent)); if (o) setVal(s, o.value); return !!o; };
+    // card: { no, name, text, image, reprint(true/false/自動) }
+    const fillCard = async card => {
+      if (!onDeck) throw new Error('untap のデッキ編集画面で実行してください');
+      let m = modal();
+      if (!m) {
+        const link = byText('a,button,span', /^Add Missing Card$/);
+        if (!link) throw new Error('「Add Missing Card」が見つかりません（デッキ編集画面の右下）');
+        link.click();
+        await until(() => modal() || byText('button,a', /I understand/i));
+        const ok = byText('button,a', /I understand/i); if (ok) { ok.click(); await w(400); }
+        m = await until(modal);
+      }
+      if (!m) throw new Error('登録画面が開きませんでした');
+      const nameIn = await until(() => [...m.querySelectorAll('input')].find(i => /exactly as printed/i.test(i.placeholder || '')));
+      if (!nameIn) throw new Error('カード名の入力欄が見つかりません（登録画面を一度閉じてやり直してください）');
+      setVal(nameIn, card.name);
+      await until(() => /Already In The Database|Nothing Matched/i.test(m.innerText), 5000);
+      await w(300);
+      // 既存カード：名前が完全一致する行の「Add reprint」
+      const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+      let mode = 'new';
+      if (card.reprint !== false) {
+        const rows = [...m.querySelectorAll('*')].filter(e => [...e.querySelectorAll('button,a')].some(b => /^Add reprint$/i.test(b.textContent.trim())) && e.innerText.length < 400);
+        const hit = rows.find(r => norm(r.innerText.split('\n')[0]) === norm(card.name));
+        if (hit) { [...hit.querySelectorAll('button,a')].find(b => /^Add reprint$/i.test(b.textContent.trim())).click(); mode = 'reprint'; }
+        else if (card.reprint === true) throw new Error('同じ名前の既存カードが見つかりません：' + card.name);
+      }
+      if (mode === 'new') {
+        const nb = [...m.querySelectorAll('button')].find(b => /It's a new card/i.test(b.textContent));
+        if (!nb) throw new Error('「It\'s a new card」ボタンが見つかりません');
+        nb.click();
+      }
+      // 画像：URL を貼って Continue
+      const urlIn = await until(() => [...modal().querySelectorAll('input')].find(i => /paste an image URL/i.test(i.placeholder || '')));
+      if (!urlIn) throw new Error('画像 URL の入力欄が見つかりません');
+      setVal(urlIn, card.image || wsImg(card.no));
+      urlIn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      urlIn.blur();
+      const cont = await until(() => [...modal().querySelectorAll('button')].find(b => /^Continue$/i.test(b.textContent.trim()) && !b.disabled), 15000);
+      if (!cont) throw new Error('画像を読み込めませんでした（URL を確認してください）：' + (card.image || wsImg(card.no)));
+      await w(500); cont.click();
+      // カード情報
+      const idIn = await until(() => fieldBy(modal(), 'Set / Release Identifier', 'input'), 15000);
+      if (!idIn) throw new Error('「Set / Release Identifier」の欄が見つかりません');
+      await w(800); // 画像からの自動入力が終わるのを待つ
+      const M = modal();
+      if (mode === 'new') {
+        const t = fieldBy(M, 'Title On Card', 'input'); if (t) setVal(t, card.name);
+        const f = fieldBy(M, 'Front', 'textarea'); if (f && card.text != null) setVal(f, card.text);
+      }
+      setVal(idIn, card.no.toLowerCase());
+      const pt = fieldBy(M, 'Print Type', 'select'); if (pt) pickOpt(pt, /^Official print$/i);
+      const or = fieldBy(M, 'Card Image Orientation', 'select'); if (or) pickOpt(or, /^Portrait$/i);
+      const add = [...M.querySelectorAll('button')].find(b => /^Add Card$/i.test(b.textContent.trim()));
+      if (add) { add.style.outline = '3px solid #ffb454'; add.scrollIntoView({ block: 'center' }); }
+      const d = wsDict(); d[card.no.toUpperCase()] = card.name; wsSave(d); if (wsNames) wsNames[card.no.toUpperCase()] = card.name;
+      log('登録アシスト: ' + card.no + ' ' + mode);
+      return mode;
+    };
+    const parseCards = s => {
+      s = String(s).replace(/```(json)?/g, '').trim();
+      const a = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
+      return a.filter(c => c && c.no && c.name).map(c => ({ no: String(c.no).trim(), name: String(c.name).trim(), text: c.text == null ? null : String(c.text), image: c.image || '', reprint: c.reprint }));
+    };
+    const regHtml = () =>
+      `<details style="margin-top:10px" data-reg><summary style="cursor:pointer"><b>カード登録アシスト</b> <span style="font-size:11px;opacity:.7">（登録担当のチャットが作った登録用データを貼る）</span></summary>` +
+      `<textarea data-regin placeholder='[{"no":"GIM/W124-032","name":"…","text":"…"}]' style="all:unset;box-sizing:border-box;display:block;width:100%;height:70px;margin-top:4px;padding:4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee;font-size:11px;white-space:pre-wrap"></textarea>` +
+      `<button data-regload style="all:unset;cursor:pointer;margin-top:4px;border:1px solid #555;border-radius:6px;padding:2px 10px;font-size:12px">読み込む</button>` +
+      `<div class="c2u-reg" style="font-size:12px;margin-top:6px"></div></details>`;
+    const wireReg = () => {
+      const box = body.querySelector('.c2u-reg'); let cards = [];
+      const render = (msg = '') => {
+        box.innerHTML = (msg ? `<div style="margin-bottom:4px">${msg}</div>` : '') + cards.map((c, i) =>
+          `<div style="border-top:1px solid #333;padding:4px 0;display:flex;gap:6px;align-items:center"><div style="flex:1"><div>${esc(c.name)}</div><div style="opacity:.6">${esc(c.no)}${c.done ? ' · <span style="color:#9be29b">' + (c.done === 'reprint' ? '版を追加' : '新規') + 'で入力済み</span>' : ''}</div></div>` +
+          `<button data-fill="${i}" style="all:unset;cursor:pointer;background:${c.done ? '#333' : '#2f6fed'};color:#fff;border-radius:6px;padding:3px 10px;white-space:nowrap">フォームに入力</button></div>`).join('') +
+          (cards.length ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button data-regre style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">登録後にもう一度取り込む</button>` +
+            `<button data-regexp style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 10px">英語名データを書き出す</button></div>` : '');
+      };
+      body.querySelector('[data-regload]').onclick = () => {
+        try { cards = parseCards(body.querySelector('[data-regin]').value); render(`${cards.length} 枚を読み込みました。上から順に「フォームに入力」→ 中身を確認して untap の「Add Card」を押してください。`); }
+        catch (e) { box.innerHTML = errHtml(new Error('登録用データを読めませんでした（[ で始まり ] で終わるデータを貼ってください）')); }
+      };
+      box.addEventListener('click', async ev => {
+        const f = ev.target.closest('[data-fill]');
+        try {
+          if (f) { const c = cards[Number(f.dataset.fill)]; f.textContent = '入力中…'; c.done = await fillCard(c); render(`<span style="color:#9be29b">${esc(c.no)} を入力しました。</span>内容を確認して、光っている「Add Card」を押してください。`); }
+          else if (ev.target.closest('[data-regre]')) {
+            if (!last) throw new Error('先に「コピーしたデッキを取り込む」でデッキを取り込んでください');
+            wsNames = null; const failed = await doImport(last.text, last.meta, out);
+            render(failed.length ? `<span style="color:#ffb454">まだ ${failed.length} 行取り込めません（上の一覧）。</span>` : '<span style="color:#9be29b">全部取り込めました。</span>「Save」を押してください。');
+          } else if (ev.target.closest('[data-regexp]')) {
+            const all = await wsNamesGet(), keys = Object.keys(all).sort();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'untapへ転送', kind: 'ws-names', saved: new Date().toISOString(), names: Object.fromEntries(keys.map(k => [k, all[k]])) }, null, 1)], { type: 'application/json' }));
+            a.download = 'ws-names.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+            render(`英語名 ${keys.length} 件を ws-names.json に書き出しました。GitHub に上書きアップロードすると、友人の環境でも自動で使われます。`);
+          }
+        } catch (e) { render(errHtml(e)); }
+      });
+      // 登録担当のチャット（ブラウザ操作）から呼べるように
+      window.c2u = { fillCard, parseCards, reimport: () => body.querySelector('[data-regre]') && body.querySelector('[data-regre]').click(), load: s => { body.querySelector('[data-regin]').value = s; body.querySelector('[data-regload]').click(); } };
     };
     body.innerHTML =
       `<div style="margin-bottom:6px">${onDeck ? `このデッキ：<b>${esc(UT_NAMES[game] || code || '不明')}</b>` : '<span style="color:#ffb454">デッキ編集画面で使うと自動で取り込めます（今は履歴の確認とコピーだけできます）</span>'}</div>` +
       (onDeck ? `<button data-clip style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:6px 12px">コピーしたデッキを取り込む</button>` +
         `<label style="display:block;font-size:12px;margin-top:4px"><input type="checkbox" data-setname checked> デッキ名も入れる</label>` : '<input type="checkbox" data-setname style="display:none">') +
-      `<div class="c2u-ut-out" style="font-size:12px;margin-top:6px"></div>` +
+      `<div class="c2u-ut-out" style="font-size:12px;margin-top:6px"></div>` + (onDeck ? regHtml() : '') +
       `<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center"><b>履歴</b><label style="font-size:11px;opacity:.8"><input type="checkbox" data-all> 全ゲーム</label></div><div class="c2u-hist"></div>`;
     const out = body.querySelector('.c2u-ut-out');
     const renderHist = () => {
@@ -845,6 +990,7 @@
         await doImport(text, parseMeta(text), out);
       } catch (e) { out.innerHTML = errHtml(e); }
     };
+    if (onDeck) wireReg();
     renderHist();
     return null;
   };

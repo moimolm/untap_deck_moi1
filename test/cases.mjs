@@ -53,6 +53,46 @@ const VG_API = {
   },
 };
 
+// untap（ヴァイス）の見本：取り込み＋ Add Missing Card の画面（実物の表示文字・項目名をまねたもの）
+const UNTAP_WS = `<div class="block desktop-fill"><div class="input-style container"><div>WSTCG</div><div>Weiß Schwarz</div>
+<input class="deck-title-input" placeholder="Name ME!" value="test"><button>Save</button>
+<button>Import / Export</button><div id="ie"></div><div id="failed"></div><a href="javascript:void(0)" id="amc">Add Missing Card</a></div></div>
+<div id="dlg"></div>
+<script>
+const DB = [{ name: 'Kotone Fujita, Started Being Cute', sets: ['gim/w124-t02'] }];
+document.querySelectorAll('button').forEach(b => { if (b.textContent === 'Import / Export') b.onclick = () => { document.getElementById('ie').innerHTML = '<button id="pd">Paste Deck</button>'; document.getElementById('pd').onclick = openDlg; }; });
+function openDlg() { const d = document.createElement('div'); d.innerHTML = '<textarea placeholder="Paste your cards here"></textarea><label><input type="checkbox"> Clear existing cards in deck.</label><button id="ic">Import Cards</button>'; document.body.appendChild(d);
+  document.getElementById('ic').onclick = () => { const v = d.querySelector('textarea').value; window.__imported = v; d.remove();
+    const bad = v.split('\\n').filter(l => /^\\d+ /.test(l)).filter(l => !DB.some(c => l.includes(c.name)));
+    document.getElementById('failed').innerHTML = bad.length ? '<div>Cards Failed Import<br><span>Clear Failed</span>' + bad.map(l => '<div>' + l + '</div>').join('') + '</div>' : ''; }; }
+const dlg = document.getElementById('dlg'); let mode = '';
+const H = s => '<div><div>Add Missing Card</div>' + s + '</div>';
+document.getElementById('amc').onclick = () => { dlg.innerHTML = '<div>Please read <button id="und">I understand</button></div>'; document.getElementById('und').onclick = step1; };
+function step1() {
+  dlg.innerHTML = H('<div>Card Name</div><input placeholder="Name exactly as printed on the card"><div id="res"></div>');
+  dlg.querySelector('input').addEventListener('input', e => { const v = e.target.value.toLowerCase(), hits = DB.filter(c => c.name.toLowerCase().includes(v));
+    const res = document.getElementById('res');
+    res.innerHTML = (hits.length ? '<div>These Are Already In The Database</div>' + hits.map((c, i) => '<div><div>' + c.name + '</div><div>' + c.sets.join(', ') + '</div><button data-rp>Add reprint</button><button>Add fan art</button></div>').join('') + '<div>Not One Of Those</div>' : '<div>Nothing Matched That Name</div>') +
+      '<button type="submit" id="nw">It\\'s a new card, not in the database</button><button type="submit">It\\'s a custom, non-legal card</button>';
+    res.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { mode = 'reprint'; step2(); });
+    document.getElementById('nw').onclick = () => { mode = 'new'; step2(); }; }); }
+function step2() {
+  dlg.innerHTML = H('<div>Card Image</div><button>Upload an image</button><input id="img1" placeholder="...or paste an image URL"><div>Alternate Face Image</div><input placeholder="...or paste an image URL"><button id="cont" disabled>Continue</button>');
+  const i1 = document.getElementById('img1'); i1.addEventListener('input', () => { window.__img = i1.value; setTimeout(() => { document.getElementById('cont').disabled = !/^https:/.test(i1.value); }, 300); });
+  document.getElementById('cont').onclick = step3; }
+function field(label, inner) { return '<div><div><div>' + label + '</div></div>' + inner + '</div>'; }
+function step3() {
+  dlg.innerHTML = H((mode === 'new' ? field('Title On Card', '<input id="f-title" value="ocr junk">') : '') +
+    field('Set / Release Identifier', '<input id="f-id">') +
+    field('Print Type', '<select id="f-pt"><option value="official">Official print</option><option value="token">Token</option><option value="testing">Testing print</option></select>') +
+    field('Card Image Orientation', '<select id="f-or"><option value="landscape-left">Left Side Down</option><option value="portrait">Portrait</option><option value="landscape-right">Right Side Down</option></select>') +
+    (mode === 'new' ? field('Front', '<textarea id="f-front">€3 GMW124-032 CR ocr</textarea>') : '') +
+    '<button id="addc">Add Card</button>');
+  document.getElementById('f-pt').value = 'testing'; document.getElementById('f-or').value = 'landscape-left';
+  document.getElementById('addc').onclick = () => { window.__added = true; }; }
+window.__form = () => { const g = id => { const e = document.getElementById(id); return e ? e.value : null; }; return { mode, image: window.__img, title: g('f-title'), id: g('f-id'), printType: g('f-pt'), orientation: g('f-or'), front: g('f-front') }; };
+</script>`;
+
 // ---------- ケース ----------
 export default [
   {
@@ -168,4 +208,30 @@ export default [
       '=== 表示 ===', await p.innerText('.c2u-ut-out'),
     ].join('\n'),
   },
+  ...['reprint', 'new'].map(kind => ({
+    name: 'untap-ws-register-' + kind, url: 'https://untap.in/deck/ws1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: { 'GIM/W124-T02': 'Kotone Fujita, Started Being Cute' } }) },
+    clipboard: '//deck-1\n4 カワイイ♡はじめました 藤田ことね (gim/w124-t02)\n2 かぜったい追いついてやる (gim/w124-032)\n\n//c2u 学マス | 優勝 | https://ws-tcg.com/deckrecipe/1/',
+    html: UNTAP_WS,
+    steps: async p => {
+      await p.waitForSelector('[data-clip]');
+      await p.click('[data-clip]');
+      await p.waitForSelector('[data-req]', { timeout: 15000 });
+      await p.click('[data-req]'); await p.waitForTimeout(200);
+      await p.evaluate(() => { window.__req = window.__clip; });
+      await p.click('[data-reg] summary');
+      await p.fill('[data-regin]', '```json\n[{"no":"GIM/W124-T02","name":"Kotone Fujita, Started Being Cute"},{"no":"GIM/W124-032","name":"I Will Definitely Catch Up","text":"[C] Draw 1."}]\n```');
+      await p.click('[data-regload]');
+      await p.click(`[data-fill="${kind === 'reprint' ? 0 : 1}"]`);
+      await p.waitForFunction(() => /入力しました|ff7b7b/.test(document.querySelector('.c2u-reg').innerHTML), null, { timeout: 20000 });
+    },
+    result: async p => [
+      '=== 取り込まれた内容 ===', await p.evaluate(() => window.__imported),
+      '=== 作成依頼 ===', await p.evaluate(() => window.__req),
+      '=== フォームの中身 ===', await p.evaluate(() => JSON.stringify(window.__form(), null, 1)),
+      '=== Add Card を押したか ===', String(await p.evaluate(() => !!window.__added)),
+      '=== アシストの表示 ===', await p.innerText('.c2u-reg'),
+    ].join('\n'),
+  })),
 ];
+
