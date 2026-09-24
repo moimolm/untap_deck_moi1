@@ -1,1 +1,19 @@
-
+name: 対応サイトの自動点検
+on:
+  schedule:
+    - cron: '0 0 * * 1'   # 毎週月曜 9:00（日本時間）
+  workflow_dispatch:      # 「Run workflow」ボタンで手動実行
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save playwright@1
+      - run: npx playwright install --with-deps chromium
+      - run: node check/check.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
