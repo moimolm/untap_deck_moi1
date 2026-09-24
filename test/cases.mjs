@@ -59,7 +59,7 @@ const UNTAP_WS = `<div class="block desktop-fill"><div class="input-style contai
 <button>Import / Export</button><div id="ie"></div><div id="failed"></div><a href="javascript:void(0)" id="amc">Add Missing Card</a></div></div>
 <div id="dlg"></div>
 <script>
-const DB = [{ name: 'Kotone Fujita, Started Being Cute', sets: ['gim/w124-t02'] }];
+const DB = [{ name: 'Kotone Fujita, Started Being Cute', sets: ['gim/w124-t02'] }, { name: 'Shiny Days', sets: ['isc/s81-e099'] }];
 document.querySelectorAll('button').forEach(b => { if (b.textContent === 'Import / Export') b.onclick = () => { document.getElementById('ie').innerHTML = '<button id="pd">Paste Deck</button>'; document.getElementById('pd').onclick = openDlg; }; });
 function openDlg() { const d = document.createElement('div'); d.innerHTML = '<textarea placeholder="Paste your cards here"></textarea><label><input type="checkbox"> Clear existing cards in deck.</label><button id="ic">Import Cards</button>'; document.body.appendChild(d);
   d.insertAdjacentHTML('beforeend', '<button id="cc">Cancel</button>'); document.getElementById('cc').onclick = () => d.remove();
@@ -252,6 +252,23 @@ export default [
     result: async p => [
       '=== 表示 ===', await p.innerText('.c2u-ut-out'),
       '=== 貼り付け画面が閉じたか ===', String(!(await p.$('textarea[placeholder="Paste your cards here"]'))),
+    ].join('\n'),
+  },
+  {
+    name: 'untap-ws-risky', url: 'https://untap.in/deck/ws1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: { 'GIM/W124-T02': 'Kotone Fujita, Started Being Cute' } }) },
+    clipboard: '//deck-1\n4 カワイイ♡はじめました 藤田ことね (gim/w124-t02)\n2 Shiny Days (isc/s81-t10)\n3 Housekeeping! 芹沢あさひ (isc/s110-029)\n\n//c2u テスト | 優勝 | https://ws-tcg.com/deckrecipe/3/',
+    html: UNTAP_WS,
+    steps: async p => {
+      await p.waitForSelector('[data-clip]');
+      await p.click('[data-clip]');
+      await p.waitForSelector('[data-chk]', { timeout: 15000 });
+      await p.click('[data-req]'); await p.waitForTimeout(200);
+    },
+    result: async p => [
+      '=== 貼った内容 ===', await p.evaluate(() => window.__imported),
+      '=== 表示 ===', await p.innerText('.c2u-ut-out'),
+      '=== 依頼内容 ===', await p.evaluate(() => window.__clip),
     ].join('\n'),
   },
   ...['reprint', 'new'].map(kind => ({

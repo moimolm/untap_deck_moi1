@@ -1,0 +1,27 @@
+=== 貼った内容 ===
+//deck-1
+4 Kotone Fujita, Started Being Cute (gim/w124-t02)
+2 Shiny Days (isc/s81-t10)
+3 Housekeeping! 芹沢あさひ (isc/s110-029)
+
+//c2u テスト | 優勝 | https://ws-tcg.com/deckrecipe/3/
+=== 表示 ===
+取り込みました（デッキ名も入れました）。確認して、untap 右上の「Save」を押してください。
+枚数が合いません：デッキ 9/50 ✗（デッキは50枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。
+取り込めなかったカード 1 行（名前を押すと調べるページが開きます）:
+3 Housekeeping! 芹沢あさひ (isc/s110-029)
+⚠ 次のカードは、名前が同じ別のカード（英語版の別のカード）が入ったかもしれません。untap のデッキで絵柄を確認して、違ったら作成依頼を送ってください。
+2 Shiny Days (isc/s81-t10)
+未登録のカードは、登録をお願いできます。
+作成依頼を送る
+依頼内容をコピー
+コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください
+=== 依頼内容 ===
+【untap カード作成依頼】
+ゲーム: ヴァイス（WSTCG）
+デッキ: テスト | https://ws-tcg.com/deckrecipe/3/
+untap の作業用デッキ: https://untap.in/deck/ws1
+未登録カード（1 行）:
+- ISC/S110-029 | Housekeeping! 芹沢あさひ | 3枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/i/isc_s110/isc_s110_029.png
+要確認（名前だけで別のカードが入ったかもしれない 1 行。この番号で登録されているか確認してください）:
+- ISC/S81-T10 | Shiny Days | 2枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/i/isc_s81/isc_s81_t10.png
