@@ -247,7 +247,9 @@ export default [
       await p.click('[data-clip]');
       await p.waitForSelector('[data-req]', { timeout: 15000 });
       await p.click('[data-req]'); await p.waitForTimeout(200);
-      await p.evaluate(() => { window.__req = window.__clip; });
+      await p.evaluate(() => { window.__req = window.__clip; const oc = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.target === '_blank') window.__opened = this.href; else oc.call(this); }; });
+      await p.fill('[data-reqname]', 'たろう');
+      await p.click('[data-reqsend]'); await p.waitForTimeout(200);
       await p.click('[data-reg] summary');
       await p.fill('[data-regin]', '```json\n[{"no":"GIM/W124-T02","name":"Kotone Fujita, Started Being Cute"},{"no":"GIM/W124-032","name":"I Will Definitely Catch Up","text":"[C] Draw 1."}]\n```');
       await p.click('[data-regload]');
@@ -257,6 +259,8 @@ export default [
     result: async p => [
       '=== 取り込まれた内容 ===', await p.evaluate(() => window.__imported),
       '=== 作成依頼 ===', await p.evaluate(() => window.__req),
+      '=== フォームを開いた URL（依頼内容を戻したもの） ===', await p.evaluate(() => { const u = new URL(window.__opened || 'about:blank'); return u.origin + u.pathname + '\n' + (u.searchParams.get('entry.1346860428') || '(なし)'); }),
+      '=== 送ったあとの表示 ===', await p.innerText('.c2u-req-out'),
       '=== フォームの中身 ===', await p.evaluate(() => JSON.stringify(window.__form(), null, 1)),
       '=== Add Card を押したか ===', String(await p.evaluate(() => !!window.__added)),
       '=== アシストの表示 ===', await p.innerText('.c2u-reg'),

@@ -13,6 +13,16 @@
   - ページで直接読み込む場合：`const s=document.createElement('script');s.src='https://moimolm.github.io/untap_deck_moi1/d2u.js?t='+Date.now();document.body.appendChild(s)`
   - 読み込むと、untap のデッキ編集画面では右上にパネルが出て、`window.c2u` が使えるようになる
 
+## 依頼の入口と流れ
+
+- **友人**：untap で取り込めないカードがあると「作成依頼を送る」ボタンが出る → Google フォーム（依頼内容が入った状態）で送信
+  - フォーム：https://docs.google.com/forms/d/e/1FAIpQLSfBI-qi51bINoY5ou9_KaH1jOK5RMtb8Yp7GXHrmlPU8xMRtw/viewform
+  - 回答シート：Google ドライブ「untap カード作成依頼 （回答）」
+- **定期処理**：スケジュールされた作業「untap カード作成依頼の処理」が1時間おきにシートを読み、入力内容を用意して確認ボードに載せ、Key のスマホに通知する
+- **確認ボード**：https://claude.ai/artifact/MbhZfR5qWFJ7zw4AcTbbjp （Key 専用。各カードに「直してほしいこと」を書ける）
+- **許可**：通知から開いた会話で Key が「OK <依頼ID>」と書いたときだけ、その依頼のカードを登録する（Add Card を押す）
+- **手動**：LINE などで届いた依頼や、自分で見つけた未登録カードは、この手順どおりチャットで処理してよい
+
 ## 依頼の形
 
 ユーザーが貼る依頼はこういう形：
