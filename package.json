@@ -1,0 +1,14 @@
+{
+  "name": "untap-deck-transfer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "check": "node check/check.mjs"
+  },
+  "devDependencies": {
+    "lz-string": "^1.5.0",
+    "playwright": "^1",
+    "terser": "^5"
+  }
+}
