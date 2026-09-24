@@ -62,8 +62,11 @@ const UNTAP_WS = `<div class="block desktop-fill"><div class="input-style contai
 const DB = [{ name: 'Kotone Fujita, Started Being Cute', sets: ['gim/w124-t02'] }];
 document.querySelectorAll('button').forEach(b => { if (b.textContent === 'Import / Export') b.onclick = () => { document.getElementById('ie').innerHTML = '<button id="pd">Paste Deck</button>'; document.getElementById('pd').onclick = openDlg; }; });
 function openDlg() { const d = document.createElement('div'); d.innerHTML = '<textarea placeholder="Paste your cards here"></textarea><label><input type="checkbox"> Clear existing cards in deck.</label><button id="ic">Import Cards</button>'; document.body.appendChild(d);
-  document.getElementById('ic').onclick = () => { const v = d.querySelector('textarea').value; window.__imported = v; d.remove();
-    const bad = v.split('\\n').filter(l => /^\\d+ /.test(l)).filter(l => !DB.some(c => l.includes(c.name)));
+  d.insertAdjacentHTML('beforeend', '<button id="cc">Cancel</button>'); document.getElementById('cc').onclick = () => d.remove();
+  document.getElementById('ic').onclick = () => { const v = d.querySelector('textarea').value; window.__imported = v;
+    const lines = v.split('\\n').filter(l => /^\\d+ /.test(l)), bad = lines.filter(l => !DB.some(c => l.includes(c.name)));
+    if (lines.length && bad.length === lines.length) { const t = document.createElement('div'); t.textContent = 'No cards where imported, please check your input'; document.body.appendChild(t); return; }
+    d.remove();
     document.getElementById('failed').innerHTML = bad.length ? '<div>Cards Failed Import<br><span>Clear Failed</span>' + bad.map(l => '<div>' + l + '</div>').join('') + '</div>' : ''; }; }
 const dlg = document.getElementById('dlg'); let mode = '';
 const H = s => '<div><div>Add Missing Card</div>' + s + '</div>';
@@ -235,6 +238,20 @@ export default [
       '=== 取り込まれた内容 ===', await p.evaluate(() => window.__imported),
       '=== デッキ名 ===', await p.inputValue('.deck-title-input'),
       '=== 表示 ===', await p.innerText('.c2u-ut-out'),
+    ].join('\n'),
+  },
+  {
+    name: 'untap-ws-nomatch', url: 'https://untap.in/deck/ws1',
+    clipboard: '//deck-1\n3 ちょっとあげる～ 和泉愛依 (isc/s81-036)\n2 オ♡フ♡レ♡コ 黛冬優子 (isc/s81-027)\n\n//c2u あさひ軸ストレイ | 優勝 | https://ws-tcg.com/deckrecipe/2/',
+    html: UNTAP_WS,
+    steps: async p => {
+      await p.waitForSelector('[data-clip]');
+      await p.click('[data-clip]');
+      await p.waitForSelector('[data-reqsend]', { timeout: 15000 });
+    },
+    result: async p => [
+      '=== 表示 ===', await p.innerText('.c2u-ut-out'),
+      '=== 貼り付け画面が閉じたか ===', String(!(await p.$('textarea[placeholder="Paste your cards here"]'))),
     ].join('\n'),
   },
   ...['reprint', 'new'].map(kind => ({

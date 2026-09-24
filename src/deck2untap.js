@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v17';
+  const C2U_VER = 'v18';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -821,9 +821,15 @@
       const ib = byText('button', /^Import Cards$/); if (!ib) throw new Error('「Import Cards」ボタンが見つかりません');
       ib.click();
       await w(2500);
+      // 1枚も一致しないと untap は「No cards where imported」を出すだけで、貼り付け画面が開いたまま残る → 全行を失敗扱いにして画面を閉じる
+      const none = byText('div,span,p', /No cards (where|were) imported/i) || (document.querySelector('textarea[placeholder="Paste your cards here"]') && byText('button', /^Import Cards$/));
+      if (none) {
+        const cancel = byText('button', /^Cancel$/); if (cancel) { cancel.click(); await w(300); }
+        return { all: true, failed: text.split('\n').map(s => s.trim()).filter(s => /^\d+ /.test(s)) };
+      }
       const fb = [...document.querySelectorAll('*')].find(e => e.children.length && /^Cards Failed Import/.test(e.textContent.trim()) && e.offsetParent !== null && e.textContent.length < 3000);
       const failed = fb ? fb.innerText.split('\n').map(s => s.trim()).filter(s => /^\d+ /.test(s) && !/^\/\/c2u/.test(s)) : [];
-      return failed;
+      return { all: false, failed };
     };
     const record = (text, meta) => {
       const h = histGet().filter(x => x.text !== text);
@@ -873,13 +879,14 @@
       out.innerHTML = '取り込み中…';
       const g = game || g2;
       if (g === 'ws') text = wsApply(text, await wsNamesGet());
-      const failed = await autoImport(text);
+      const res = await autoImport(text), failed = res.failed;
       last = { text, meta };
       if (panel.querySelector('[data-setname]').checked) setName(meta.title);
       record(text, meta);
       log('untap取り込み: ' + meta.title + ' 失敗' + failed.length);
-      out.innerHTML = `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>` +
-        countCheck(text, g) +
+      out.innerHTML = (res.all
+        ? `<div style="color:#ffb454">1枚も取り込めませんでした（untap に一致するカードがありません）。下のカードを登録してもらうと取り込めるようになります。</div>`
+        : `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>` + countCheck(text, g)) +
         (failed.length ? `<div style="color:#ffb454;margin-top:4px">取り込めなかったカード ${failed.length} 行（名前を押すと調べるページが開きます）:<br>` +
           failed.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` +
           `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px">未登録のカードは、登録をお願いできます。` +
