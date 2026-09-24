@@ -1,0 +1,14 @@
+=== コピーされた内容 ===
+//deck-1
+4 Deadly Fighter Braid Claw
+4 Great Sonic
+4 悪なき侵略 レッドアウト
+
+//pile-public
+1 Bolshack Dragon
+
+//c2u 火単 | メイン12・超次元1 | https://tcg-portal.jp/duelmasters/tournament-results/x
+=== 表示 ===
+枚数が合いません：メイン 12/40 ✗・超次元 1枚 ✓（メインは40枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。
+英語名が見つからないカード（日本語名のまま出力）。名前を押すと英語名を調べるページが開きます:
+悪なき侵略 レッドアウト

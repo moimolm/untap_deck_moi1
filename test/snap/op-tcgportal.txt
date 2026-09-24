@@ -1,0 +1,23 @@
+=== コピーされた内容 ===
+//play-1
+1 Monkey.D.Luffy [op16-022]
+
+//deck-1
+8 Prisoner of Impel Down [op16-042]
+8 Prisoner of Impel Down [op16-042]
+8 Prisoner of Impel Down [op16-042]
+8 Prisoner of Impel Down [op16-042]
+4 Mr.3[Galdino] [op16-056]
+4 Mr.3[Galdino] [st30-014]
+4 Crocodile [op16-045]
+8 Prisoner of Impel Down [op16-042]
+2 謎のカード [op99-001]
+
+//deck-2
+10 Don!! Card (don-000)
+
+//c2u 緑青ルフィ | リーダーモンキー・D・ルフィ・メイン54枚 | https://tcg-portal.jp/onepiece/tournament-results/x
+=== 表示 ===
+枚数が合いません：リーダー 1/1 ✓・デッキ 54/50 ✗・ドン!! 10/10 ✓（デッキは50枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。
+英語名が見つからないカード（日本語名のまま出力）。名前を押すと英語名を調べるページが開きます:
+OP99-001 謎のカード

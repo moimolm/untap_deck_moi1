@@ -1,0 +1,9 @@
+=== コピーされた内容 ===
+//deck-1
+4 Drakloak (sv6)
+4 Ultra Ball (sv1)
+8 Grass Energy
+
+//c2u ポケカ公式デッキ TEST-DECK | 16枚 | https://www.pokemon-card.com/deck/confirm.html/deckID/TEST-DECK
+=== 表示 ===
+枚数が合いません：デッキ 16/60 ✗（デッキは60枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。

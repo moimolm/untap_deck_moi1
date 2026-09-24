@@ -1,0 +1,11 @@
+=== コピーされた内容 ===
+//deck-1
+2 Perfect, Domination Elemental / Galaxy Charger
+1 Deadly Fighter Braid Claw
+
+//pile-public
+1 Bolshack Dragon
+
+//c2u DECK MAKER のデッキ（デュエマ） | メイン3・超次元1 | https://deck-maker.com/dm/decks/new/
+=== 表示 ===
+枚数が合いません：メイン 3/40 ✗・超次元 1枚 ✓（メインは40枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。

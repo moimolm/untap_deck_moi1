@@ -1,0 +1,13 @@
+=== コピーされた内容 ===
+//play-1
+1 Monkey.D.Luffy [op16-022]
+
+//deck-1
+50 Prisoner of Impel Down [op16-042]
+
+//deck-2
+10 Don!! Card (don-000)
+
+//c2u モンキー・D・ルフィ | メイン50枚 テスト大会 優勝 | https://cardrush.media/onepiece/decks/123
+=== 表示 ===
+枚数チェック：リーダー 1/1 ✓・デッキ 50/50 ✓・ドン!! 10/10 ✓

@@ -1,0 +1,19 @@
+=== コピーされた内容 ===
+//deck-1
+3 Ash Blossom & Joyous Spring
+3 Maxx "C"
+3 Infinite Impermanence
+31 謎の魔法
+
+//deck-2
+1 Accesscode Talker
+1 Ars Magna of Infinity and Finity
+
+//sideboard-1
+2 Infinite Impermanence
+
+//c2u テスト遊戯王 | メイン40・EX2・サイド2 | https://tcg-portal.jp/yugioh/tournament-results/x
+=== 表示 ===
+枚数チェック：メイン 40枚 ✓・EX 2枚 ✓・サイド 2枚 ✓
+英語名が見つからないカード（日本語名のまま出力）。名前を押すと英語名を調べるページが開きます:
+謎の魔法

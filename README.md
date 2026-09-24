@@ -15,21 +15,36 @@
 | `src/loader.js` | ブックマークに登録する短いコード（`d2u.js` を読み込むだけ） |
 | `data/pokemon-jp-en.json` | ポケモンの日本語名→英語名の辞書（1747件、2026/9 時点）。組み立て時に圧縮して埋め込む |
 | `tools/build.mjs` | 組み立てスクリプト |
+| `CHANGELOG.md` | 更新履歴（版を上げたら1行足す） |
 | `tools/install-page.html` | インストールページの控え（予備ブックマーク用に全部入りの版も埋め込み済み） |
+| `test/cases.mjs` ・ `test/run.mjs` ・ `test/snap/` | テスト。各サイトの見本ページで `d2u.js` を動かし、コピー内容を `test/snap/*.txt`（正しい結果）と比べる |
+| `.github/workflows/build.yml` | 自動ビルド。`src/` などを GitHub 上で直すと、テスト → `d2u.js` の作り直し → コミットまで自動 |
 | `check/check.mjs` ・ `.github/workflows/check.yml` | 対応サイトの自動点検（毎週月曜 9:00・GitHub Actions） |
 
 ## 更新のしかた
 
 いちばん簡単なのは、作り直した `d2u.js` をもらって上書きアップロードするだけ（数分で全員のブックマークに反映。パネル右上の版番号で確認できる）。アップロードするときは、ダウンロードフォルダに古い `d2u.js` が残っていないか注意（新しい方が `d2u (1).js` になることがある。v14 は約80KB）。
 
-自分で組み立てるとき：
+**GitHub 上で直す（おすすめ）**：`src/deck2untap.js` を GitHub の画面で編集して Commit するだけ。`build.yml` が1〜3分で `d2u.js` を作り直してコミットする（Actions タブで進み具合が見える）。テストに落ちたら ❌ になり、`d2u.js` は差し替わらない（＝友人のブックマークは前の版のまま動く）。
+
+自分の PC で組み立てるとき：
 
 ```
 npm install
+npx playwright install chromium   # 初回のみ（テスト用）
 npm run build        # → d2u.js ができる
+npm test             # 見本どおりか確認
 ```
 
-`src/deck2untap.js` の `C2U_VER` を上げてから組み立てると、どの版が動いているか分かりやすい。
+### テスト
+
+- `npm test`：全ケースを実行（約15秒）。`node test/run.mjs vg-` のように名前の頭を付けるとそのケースだけ
+- 違いがあると ❌ と最初に違った行を表示し、今回の結果を `test/snap/<名前>.new.txt` に保存する
+- 出力を**わざと**変えたとき（英語名の直し・見出しの変更など）は `npm run test:update` で見本を作り直して、`test/snap/` ごとコミットする
+- ケースの追加は `test/cases.mjs` に1つ足して `npm test`（見本が無いケースは初回に自動保存）
+- 本物のサイトには繋がない。本物のサイトの構造が変わったかは、毎週の自動点検（`check`）で見る
+
+`src/deck2untap.js` の `C2U_VER` を上げてから組み立てると、どの版が動いているか分かりやすい（上げたら `CHANGELOG.md` にも1行）。
 
 ## 対応サイトと英語名の出どころ
 

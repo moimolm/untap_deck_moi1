@@ -1,0 +1,10 @@
+=== コピーされた内容 ===
+//pile-facedown
+1 Blaster Blade (dz-ss14/002)
+
+//deck-1
+4 Fated One of Miracles, Rezael (dz-bt01/010)
+
+//c2u テスト ABC12 | ライド1・デッキ4 | https://decklog.bushiroad.com/view/ABC12
+=== 表示 ===
+枚数が合いません：ライド 1枚 ✗・デッキ 4/50 ✗（ライドは4〜5枚のはず、デッキは50枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。
