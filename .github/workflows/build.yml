@@ -1,6 +1,9 @@
 name: 本体（d2u.js）の自動ビルド
 # src/deck2untap.js などを GitHub 上で直して保存（Commit）すると、
-# d2u.js を作り直して自動でコミットする。GitHub Pages にもそのまま反映される。
+# テスト → d2u.js の作り直し → 自動コミット まで行う。GitHub Pages にもそのまま反映される。
+# テストに落ちたときは d2u.js を差し替えない（前の版のまま動き続ける）。
+# 出力をわざと変えたときは、Actions →「本体（d2u.js）の自動ビルド」→ Run workflow で
+# 「テストの見本を今回の結果で作り直す」に印を付けて実行する。
 on:
   push:
     branches: [main]
@@ -8,8 +11,14 @@ on:
       - 'src/**'
       - 'data/**'
       - 'tools/build.mjs'
+      - 'test/**'
       - 'package.json'
-  workflow_dispatch:      # 「Run workflow」ボタンで手動実行
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'テストの見本を今回の結果で作り直す（出力をわざと変えたとき）'
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -18,28 +27,35 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-save --no-audit --no-fund lz-string@^1.5.0 terser@^5
+      - run: npm install --no-save --no-audit --no-fund lz-string@^1.5.0 terser@^5 playwright@1
       - name: d2u.js を作る
         run: node tools/build.mjs
       - name: 作った d2u.js が壊れていないか確認
         run: |
           node -e "new Function(require('fs').readFileSync('d2u.js','utf8'))"
           test $(wc -c < d2u.js) -gt 30000
-      - name: テスト（あれば）
-        run: |
-          if [ -d test ]; then npm test; else echo "test フォルダなし（スキップ）"; fi
+      - name: テスト用のブラウザを入れる
+        if: hashFiles('test/run.mjs') != ''
+        run: npx playwright install --with-deps chromium
+      - name: テスト
+        if: hashFiles('test/run.mjs') != ''
+        run: node test/run.mjs ${{ inputs.update_snapshots && '--update' || '' }}
+      - name: 違いの中身（テストに落ちたとき）
+        if: failure()
+        run: for f in test/snap/*.new.txt; do [ -f "$f" ] && { echo "::group::$f"; cat "$f"; echo "::endgroup::"; }; done; true
       - name: 変わっていればコミット
         run: |
-          if git diff --quiet -- d2u.js; then echo "d2u.js に変更なし"; exit 0; fi
+          git add d2u.js
+          [ -d test/snap ] && git add test/snap
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
           VER=$(grep -oP "C2U_VER = '\K[^']+" src/deck2untap.js || echo '?')
-          git add d2u.js
           git commit -m "d2u.js を自動ビルド（$VER）"
           git push
