@@ -107,6 +107,35 @@ export default [
     ] } } } }),
   },
   {
+    name: 'op-cardrush-jump-diff', url: 'https://cardrush.media/onepiece/articles/1',
+    api: {
+      'punk-records/contents/japanese/data': () => [{ name: 'jp16.json', download_url: 'https://raw.test/jp16.json' }],
+      'raw.test/jp16.json': () => [{ id: 'OP16-045', name: 'クロコダイル' }, { id: 'OP16-042', name: 'インペルダウンの囚人' }],
+      ...OP_API,
+    },
+    html: `<h2>記事</h2><div style="height:2000px"></div><section><h3 id="h123">8/28 天竜杯 優勝のデッキレシピ</h3><a href="/onepiece/decks/123">デッキレシピの詳細</a></section>` +
+      nextData({ props: { pageProps: { decks: [{ id: 123, tournament_date: '2026-08-28', tournament_name: '天竜杯', score: '優勝', recipes: [
+        { count: 1, card: { card_number: 'OP16-022', name: 'モンキー・D・ルフィ', category: 'リーダー' } },
+        { count: 50, card: { card_number: 'OP16-042', name: 'インペルダウンの囚人', category: 'キャラ' } },
+      ] }] } } }),
+    steps: async p => {
+      await p.click('[data-jump]');
+      await p.waitForTimeout(300);
+      await p.evaluate(() => { window.__outline = document.getElementById('h123').style.outline; });
+      await p.click('#c2u-body button');
+      await p.waitForSelector('[data-x="diff"]');
+      await p.click('[data-x="diff"]');
+      await p.fill('.c2u-x-out textarea', '//deck-1\n46 Prisoner of Impel Down [op16-042]\n4 Crocodile [op16-045]');
+      await p.click('.c2u-x-out button');
+      await p.waitForFunction(() => !/比べています/.test(document.querySelector('.c2u-diff').innerText), null, { timeout: 15000 });
+    },
+    result: async p => [
+      '=== 場所へ移動（見出しが光ったか） ===', await p.evaluate(() => window.__outline || '(光っていない)'),
+      '=== デッキの見出し ===', await p.innerText('[data-jump]'),
+      '=== 比べた結果 ===', await p.innerText('.c2u-diff'),
+    ].join('\n'),
+  },
+  {
     name: 'op-don-custom', url: 'https://tcg-portal.jp/onepiece/tournament-results/x', api: OP_API,
     html: `<h1>ドン変更</h1><main><h3>リーダーカード</h3>${tbl([[1, 'モンキー・D・ルフィOP16-022']])}<h3>メインデッキ</h3>${tbl([[50, 'インペルダウンの囚人OP16-042']])}</main>`,
     steps: async p => {

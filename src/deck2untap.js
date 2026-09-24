@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v15';
+  const C2U_VER = 'v16';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -61,10 +61,31 @@
     return names;
   };
 
+  // 型番 → 日本語名（punk-records の japanese。デッキを比べるときの表示用）
+  const opJpNames = async () => {
+    let names = cacheGet('c2u-jp-names-v1', 7 * DAY);
+    if (names) return names;
+    const list = await (await fetch('https://api.github.com/repos/buhbbl/punk-records/contents/japanese/data')).json();
+    if (!Array.isArray(list)) return {};
+    names = {};
+    await Promise.all(list.filter(f => f.name.endsWith('.json')).map(async f => {
+      try { for (const c of await (await fetch(f.download_url)).json()) if (c && c.id && c.name && !names[c.id]) names[c.id] = c.name; } catch (e) {}
+    }));
+    cacheSet('c2u-jp-names-v1', names);
+    return names;
+  };
+
   // ドン!!デッキ（untap の DON Deck＝//deck-2）。既定は通常のドン!!、パネルで好きなドン!!に変えられる（ブラウザに保存）
   const OP_DON_KEY = 'c2u-op-don-v1', OP_DON_DEFAULT = 'Don!! Card (don-000)';
   const opDon = () => { try { return localStorage.getItem(OP_DON_KEY) || OP_DON_DEFAULT; } catch (e) { return OP_DON_DEFAULT; } };
   const opDonText = () => '\n\n//deck-2\n10 ' + opDon();
+  // cardrush の記事：各デッキの見出しの近くに /decks/<id> へのリンクがある → その見出しへ飛ぶ
+  const crEl = d => d.deckId ? () => {
+    const a = [...document.querySelectorAll('a[href]')].find(x => new RegExp('/decks/' + d.deckId + '(?:[/?#]|$)').test(x.getAttribute('href')));
+    if (!a) return null;
+    let e = a; for (let k = 0; k < 8 && e.parentElement; k++) { e = e.parentElement; const h = e.querySelector('h2,h3'); if (h) return h; }
+    return a;
+  } : null;
   const cardrushFindDecks = rootObj => {
     const out = [], seen = new Set();
     const walk = (o, parent) => {
@@ -144,6 +165,7 @@
     const decks = cardrushFindDecks(JSON.parse(nd.textContent)).filter(d => d.lite.length);
     if (!decks.length) throw new Error('このページにはデッキレシピが見つかりませんでした');
     return decks.map((d, i) => ({
+      el: crEl(d),
       title: (d.label || 'デッキ ' + (i + 1)),
       sub: d.lite.reduce((s, r) => s + Number(r.count), 0) + '枚',
       build: async () => pkBuild(d.lite.map(r => [r.card.name, Number(r.count)])),
@@ -187,6 +209,7 @@
     };
     const base = n => (String(n).toUpperCase().match(/^[A-Z]+\d*-\d{3}/) || [String(n).toUpperCase()])[0];
     return decks.map((d, i) => ({
+      el: crEl(d),
       title: (d.lite[0] && d.lite[0].card.name) || 'デッキ',
       sub: 'メイン' + d.lite.slice(1).reduce((s, r) => s + Number(r.count), 0) + '枚 ' + (d.label || 'デッキ ' + (i + 1)),
       build: async () => {
@@ -398,7 +421,7 @@
     const all = new Map();
     for (const d of decks) for (const z of ['ride', 'main']) for (const r of d.zones[z]) all.set(r[0], r[1]);
     const m = await vgNames([...all]);
-    return decks.map(d => ({ title: d.title, sub: d.sub, build: async () => vgBuild(d.zones, m) }));
+    return decks.map(d => ({ title: d.title, sub: d.sub, el: d.el, build: async () => vgBuild(d.zones, m) }));
   };
   const vgSub = z => `ライド${cnt3(z.ride)}・デッキ${cnt3(z.main)}`;
   const cnt3 = rows => rows.reduce((s, r) => s + Number(r[2]), 0);
@@ -422,7 +445,7 @@
       for (let k = 0; k < 6 && e; k++, e = e.previousElementSibling) { const t = e.textContent.trim(); if (t) info.unshift(t.replace(/\s+/g, ' ')); if (/DECK LOG/.test(t)) break; }
       const who = info.find(t => /選手/.test(t)) || '';
       const nation = (info.find(t => /国家/.test(t)) || '').replace(/^国家[：:]\s*/, '');
-      return { title: (who || 'デッキ ' + (i + 1)) + (nation ? '（' + nation + '）' : ''), sub: vgSub(zones), zones };
+      return { title: (who || 'デッキ ' + (i + 1)) + (nation ? '（' + nation + '）' : ''), sub: vgSub(zones), zones, el: () => l };
     }).filter(d => d.zones.main.length);
     return vgDecks(decks);
   };
@@ -473,7 +496,8 @@
     const val = i => info.querySelector(`input[data-i="${i}"]`).value.trim();
     const fileIn = info.querySelector('input[type=file]');
     wireExtras(info, () => '//deck-1\n' + rows.map(([no, jp, q], i) => `${q} ${val(i) || jp} (${no.toLowerCase()})`).join('\n'),
-      () => notesText(title, '', rows.map(([no, jp], i) => [val(i), jp + '（' + no + '）']).filter(p => p[0])));
+      () => notesText(title, '', rows.map(([no, jp], i) => [val(i), jp + '（' + no + '）']).filter(p => p[0])),
+      () => rows.map(([no, jp], i) => [val(i) || jp, jp]));
     info.querySelector('[data-a="export"]').onclick = () => {
       const all = { ...remote, ...wsDict() };
       const keys = Object.keys(all).sort();
@@ -513,7 +537,7 @@
       out.innerHTML = t.length ? `英語名が空欄の ${t.length} 種を「番号・日本語名・画像URL・HoCのURL」の表でコピーしました（スプレッドシートに貼れます）。` : '空欄のカードはありません。';
     };
   };
-  const wsDeck = (title, sub, load) => ({ title, sub, ws: true, load });
+  const wsDeck = (title, sub, load, el) => ({ title, sub, ws: true, load, el });
 
   /* ---------- ws-tcg.com（公式デッキレシピ） ---------- */
   const wsTables = root => {
@@ -541,7 +565,7 @@
         }
         if (!rows.length) throw new Error('カード表を読み込めませんでした（そのデッキの「詳細を開く」を押してから、もう一度お試しください）');
         return rows;
-      });
+      }, () => b);
     });
   };
 
@@ -614,17 +638,20 @@
     for (const l of String(text).split('\n')) {
       const r = l.trim().match(/^(\d+)\s*[x×]?\s+(.+)$/i);
       if (!r || /^\/\//.test(l)) continue;
+      const no = (r[2].match(/[\[(]([^\[\]()]*)[\])]\s*$/) || [])[1] || '';
       const name = r[2].replace(/\s*[\[(][^\[\]()]*[\])]\s*$/, '').trim();
       const k = name.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ');
-      const o = m.get(k) || { name, n: 0 }; o.n += Number(r[1]); m.set(k, o);
+      const o = m.get(k) || { name, no, n: 0 }; o.n += Number(r[1]); if (!o.no) o.no = no; m.set(k, o);
     }
     return m;
   };
-  const diffHtml = (a, b) => {
+  // jp(o) → 日本語名（分からなければ ''）。日本語名があれば「日本語名 · 英語名」で表示
+  const diffHtml = (a, b, jp = () => '') => {
     const A = deckMap(a), B = deckMap(b), more = [], less = [];
+    const nm = o => { const j = jp(o); return j && j !== o.name ? `${j} · ${o.name}` : o.name; };
     let same = 0;
-    for (const [k, o] of A) { const n = (B.get(k) || {}).n || 0; if (o.n > n) more.push(`+${o.n - n} ${o.name}` + (n ? `（${n}→${o.n}）` : '')); else if (o.n === n) same++; }
-    for (const [k, o] of B) { const n = (A.get(k) || {}).n || 0; if (o.n > n) less.push(`−${o.n - n} ${o.name}` + (n ? `（${o.n}→${n}）` : '')); }
+    for (const [k, o] of A) { const n = (B.get(k) || {}).n || 0; if (o.n > n) more.push(`+${o.n - n} ${nm(o)}` + (n ? `（${n}→${o.n}）` : '')); else if (o.n === n) same++; }
+    for (const [k, o] of B) { const n = (A.get(k) || {}).n || 0; if (o.n > n) less.push(`−${o.n - n} ${nm(o)}` + (n ? `（${o.n}→${n}）` : '')); }
     if (!B.size) return '<div style="color:#ffb454">比べるデッキが読み取れませんでした（「枚数 カード名」の行が必要です）</div>';
     if (!more.length && !less.length) return `<div style="color:#9be29b">同じ構成です（${same} 種）</div>`;
     const ul = (t, xs, c) => xs.length ? `<div style="margin-top:4px;color:${c}">${t}</div><div style="white-space:pre-wrap">${esc(xs.join('\n'))}</div>` : '';
@@ -637,7 +664,17 @@
     `<button data-x="notes" style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 8px">対戦用メモをコピー</button>` +
     `<button data-x="diff" style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 8px">別のデッキと比べる</button></div>` +
     `<div class="c2u-x-out" style="font-size:12px;margin-top:4px"></div>`;
-  const wireExtras = (root, getText, getNotes) => {
+  // 比べるときの日本語名：このデッキの「英語名 → 日本語名」＋ワンピースは型番から
+  const jpResolver = async (pairs, texts) => {
+    const byEn = new Map((pairs || []).map(([en, j]) => [String(en).normalize('NFKC').toLowerCase().replace(/\s+/g, ' '), j]));
+    const opNo = /^[a-z]+\d*-\d{3}$/i;
+    let op = {};
+    if (texts.some(t => [...deckMap(t).values()].some(o => opNo.test(o.no) && !byEn.has(o.name.normalize('NFKC').toLowerCase().replace(/\s+/g, ' '))))) {
+      try { op = await opJpNames(); } catch (e) {}
+    }
+    return o => byEn.get(o.name.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ')) || (opNo.test(o.no) && op[o.no.toUpperCase()]) || '';
+  };
+  const wireExtras = (root, getText, getNotes, getPairs = () => []) => {
     const out = root.querySelector('.c2u-x-out');
     root.querySelector('[data-x="notes"]').onclick = async () => {
       await copyText(getNotes());
@@ -649,7 +686,11 @@
         `<textarea style="width:100%;box-sizing:border-box;min-height:90px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;font:11px/1.4 monospace"></textarea>` +
         `<button style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px;margin-top:4px">比べる</button><div class="c2u-diff" style="margin-top:6px"></div>`;
       const ta = out.querySelector('textarea');
-      out.querySelector('button').onclick = () => { out.querySelector('.c2u-diff').innerHTML = diffHtml(getText(), ta.value); log('差分を表示'); };
+      out.querySelector('button').onclick = async () => {
+        const box = out.querySelector('.c2u-diff'); box.textContent = '比べています…';
+        const t = getText(), jp = await jpResolver(getPairs(), [t, ta.value]);
+        box.innerHTML = diffHtml(t, ta.value, jp); log('差分を表示');
+      };
       ta.focus();
     };
   };
@@ -1023,10 +1064,17 @@
       box.style.cssText = 'border:1px solid #3a3d44;border-radius:8px;padding:8px;margin-bottom:8px';
       box.innerHTML =
         `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">` +
-        `<div><b>${esc(d.title)}</b><div style="opacity:.7;font-size:12px">${esc(d.sub)}</div></div>` +
+        `<div${d.el ? ' data-jump title="ページのこのデッキの場所へ移動" style="cursor:pointer"' : ''}><b${d.el ? ' style="text-decoration:underline dotted"' : ''}>${esc(d.title)}</b><div style="opacity:.7;font-size:12px">${esc(d.sub)}${d.el ? ' <span style="opacity:.8">↓ 場所へ</span>' : ''}</div></div>` +
         `<button style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 12px;white-space:nowrap">${d.ws ? '開く' : 'コピー'}</button></div>` +
         `<div class="c2u-info"></div>`;
       const btn = box.querySelector('button'), info = box.querySelector('.c2u-info');
+      const jb = box.querySelector('[data-jump]');
+      if (jb) jb.onclick = () => {
+        const e = d.el();
+        if (!e) { jb.querySelector('div').insertAdjacentHTML('beforeend', ' <span style="color:#ffb454">（場所が見つかりませんでした）</span>'); return; }
+        e.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const o = e.style.outline; e.style.outline = '3px solid #ffb454'; setTimeout(() => { e.style.outline = o; }, 1800);
+      };
       if (d.ws) {
         btn.onclick = async () => {
           btn.textContent = '読み込み中…';
@@ -1049,7 +1097,7 @@
               b.missing.map(q => b.look ? `<a href="${esc(b.look(q))}" target="_blank" rel="noopener" style="color:#ffb454;text-decoration:underline">${esc(q)}</a>` : esc(q)).join('、') + `</div>` : '') +
             `<details style="margin-top:4px"><summary style="cursor:pointer;opacity:.7;font-size:12px">中身を見る</summary>` +
             `<pre style="white-space:pre-wrap;font-size:11px;margin:4px 0 0">${esc(b.text)}</pre></details>` + extrasHtml();
-          wireExtras(info, () => b.text, () => notesText(d.title, d.sub, b.pairs));
+          wireExtras(info, () => b.text, () => notesText(d.title, d.sub, b.pairs), () => b.pairs);
           if (gameOf(b) === 'op') {
             const box2 = document.createElement('div');
             box2.style.cssText = 'font-size:12px;margin-top:6px;padding-top:6px;border-top:1px dashed #333';
