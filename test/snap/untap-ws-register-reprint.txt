@@ -17,8 +17,8 @@ untap の作業用デッキ: https://untap.in/deck/ws1
  "image": "https://ws-tcg.com/wordpress/wp-content/images/cardlist/g/gim_w124/gim_w124_t02.png",
  "title": null,
  "id": "gim/w124-t02",
- "printType": "official",
- "orientation": "portrait",
+ "printType": "ofp",
+ "orientation": "",
  "front": null
 }
 === Add Card を押したか ===

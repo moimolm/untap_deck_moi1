@@ -17,8 +17,8 @@ untap の作業用デッキ: https://untap.in/deck/ws1
  "image": "https://ws-tcg.com/wordpress/wp-content/images/cardlist/g/gim_w124/gim_w124_032.png",
  "title": "I Will Definitely Catch Up",
  "id": "gim/w124-032",
- "printType": "official",
- "orientation": "portrait",
+ "printType": "ofp",
+ "orientation": "",
  "front": "[C] Draw 1."
 }
 === Add Card を押したか ===

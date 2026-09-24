@@ -15,6 +15,7 @@
 | `src/loader.js` | ブックマークに登録する短いコード（`d2u.js` を読み込むだけ） |
 | `data/pokemon-jp-en.json` | ポケモンの日本語名→英語名の辞書（1747件、2026/9 時点）。組み立て時に圧縮して埋め込む |
 | `tools/build.mjs` | 組み立てスクリプト |
+| `docs/registration-guide.md` | 未登録カードを soogoo で untap に登録する手順（登録担当チャット向け） |
 | `CHANGELOG.md` | 更新履歴（版を上げたら1行足す） |
 | `tools/install-page.html` | インストールページの控え（予備ブックマーク用に全部入りの版も埋め込み済み） |
 | `test/cases.mjs` ・ `test/run.mjs` ・ `test/snap/` | テスト。各サイトの見本ページで `d2u.js` を動かし、コピー内容を `test/snap/*.txt`（正しい結果）と比べる |

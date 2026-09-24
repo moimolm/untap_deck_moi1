@@ -82,13 +82,13 @@ function step2() {
   document.getElementById('cont').onclick = step3; }
 function field(label, inner) { return '<div><div><div>' + label + '</div></div>' + inner + '</div>'; }
 function step3() {
-  dlg.innerHTML = H((mode === 'new' ? field('Title On Card', '<input id="f-title" value="ocr junk">') : '') +
-    field('Set / Release Identifier', '<input id="f-id">') +
-    field('Print Type', '<select id="f-pt"><option value="official">Official print</option><option value="token">Token</option><option value="testing">Testing print</option></select>') +
-    field('Card Image Orientation', '<select id="f-or"><option value="landscape-left">Left Side Down</option><option value="portrait">Portrait</option><option value="landscape-right">Right Side Down</option></select>') +
+  dlg.innerHTML = H((mode === 'new' ? field('Title On Card', '<input id="f-title" name="title" value="ocr junk">') : '') +
+    field('Set / Release Identifier ', '<input id="f-id" name="set">') +
+    field('Print Type', '<select id="f-pt" name="image-type"><option value="ofp">Official print</option><option value="token">Token</option><option value="tst">Testing print</option></select>') +
+    field('Card Image Orientation', '<select id="f-or"><option value="">Portrait</option><option value="lsd">Left Side Down</option><option value="rsd">Right Side Down</option></select>') +
     (mode === 'new' ? field('Front', '<textarea id="f-front">€3 GMW124-032 CR ocr</textarea>') : '') +
     '<button id="addc">Add Card</button>');
-  document.getElementById('f-pt').value = 'testing'; document.getElementById('f-or').value = 'landscape-left';
+  document.getElementById('f-pt').value = 'tst'; document.getElementById('f-or').value = 'lsd';
   document.getElementById('addc').onclick = () => { window.__added = true; }; }
 window.__form = () => { const g = id => { const e = document.getElementById(id); return e ? e.value : null; }; return { mode, image: window.__img, title: g('f-title'), id: g('f-id'), printType: g('f-pt'), orientation: g('f-or'), front: g('f-front') }; };
 </script>`;

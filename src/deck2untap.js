@@ -879,26 +879,34 @@
         nb.click();
       }
       // 画像：URL を貼って Continue
-      const urlIn = await until(() => [...modal().querySelectorAll('input')].find(i => /paste an image URL/i.test(i.placeholder || '')));
+      const urlIn = await until(() => { const M = modal(); return M && [...M.querySelectorAll('input')].find(i => /paste an image URL/i.test(i.placeholder || '')); });
       if (!urlIn) throw new Error('画像 URL の入力欄が見つかりません');
       setVal(urlIn, card.image || wsImg(card.no));
       urlIn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       urlIn.blur();
-      const cont = await until(() => [...modal().querySelectorAll('button')].find(b => /^Continue$/i.test(b.textContent.trim()) && !b.disabled), 15000);
+      const cont = await until(() => { const M = modal(); return M && [...M.querySelectorAll('button')].find(b => /^Continue$/i.test(b.textContent.trim()) && !b.disabled); }, 15000);
       if (!cont) throw new Error('画像を読み込めませんでした（URL を確認してください）：' + (card.image || wsImg(card.no)));
       await w(500); cont.click();
       // カード情報
-      const idIn = await until(() => fieldBy(modal(), 'Set / Release Identifier', 'input'), 15000);
+      // 実物の欄名：title / set / image-type（印刷の種類）。向きは Portrait を含む select、テキストは textarea
+      const F = {
+        id: M => M.querySelector('input[name="set"]') || fieldBy(M, 'Set / Release Identifier', 'input'),
+        title: M => M.querySelector('input[name="title"]') || fieldBy(M, 'Title On Card', 'input'),
+        type: M => M.querySelector('select[name="image-type"]') || fieldBy(M, 'Print Type', 'select'),
+        orient: M => [...M.querySelectorAll('select')].find(x => [...x.options].some(o => /^Portrait$/i.test(o.textContent.trim()))),
+        front: M => fieldBy(M, 'Front', 'textarea') || M.querySelector('textarea'),
+      };
+      const idIn = await until(() => { const M = modal(); return M && F.id(M); }, 15000);
       if (!idIn) throw new Error('「Set / Release Identifier」の欄が見つかりません');
       await w(800); // 画像からの自動入力が終わるのを待つ
       const M = modal();
       if (mode === 'new') {
-        const t = fieldBy(M, 'Title On Card', 'input'); if (t) setVal(t, card.name);
-        const f = fieldBy(M, 'Front', 'textarea'); if (f && card.text != null) setVal(f, card.text);
+        const t = F.title(M); if (t) setVal(t, card.name);
+        const f = F.front(M); if (f && card.text != null) setVal(f, card.text);
       }
       setVal(idIn, card.no.toLowerCase());
-      const pt = fieldBy(M, 'Print Type', 'select'); if (pt) pickOpt(pt, /^Official print$/i);
-      const or = fieldBy(M, 'Card Image Orientation', 'select'); if (or) pickOpt(or, /^Portrait$/i);
+      const pt = F.type(M); if (pt) pickOpt(pt, /^Official print$/i);
+      const or = F.orient(M); if (or) pickOpt(or, /^Portrait$/i);
       const add = [...M.querySelectorAll('button')].find(b => /^Add Card$/i.test(b.textContent.trim()));
       if (add) { add.style.outline = '3px solid #ffb454'; add.scrollIntoView({ block: 'center' }); }
       const d = wsDict(); d[card.no.toUpperCase()] = card.name; wsSave(d); if (wsNames) wsNames[card.no.toUpperCase()] = card.name;
