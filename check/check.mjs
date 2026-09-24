@@ -21,15 +21,22 @@ const PAGES = [
 const MOCK = process.env.MOCK_DIR;
 
 const browser = await chromium.launch();
+const context = await browser.newContext({
+  locale: 'ja-JP', timezoneId: 'Asia/Tokyo', viewport: { width: 1280, height: 900 },
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+  extraHTTPHeaders: { 'Accept-Language': 'ja,en-US;q=0.8,en;q=0.6' },
+});
+const BLOCK_RE = /access denied|forbidden|just a moment|attention required|verify you are human|cloudflare|アクセスが拒否|海外からのアクセス|ご利用いただけません|request blocked|not available in your/i;
 const results = [];
 for (const [label, url, opt = {}] of PAGES) {
-  const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1280, height: 900 } });
-  let status = 'OK', detail = '';
+  const page = await context.newPage();
+  let status = 'OK', detail = '', http = 0;
   try {
     // GitHub API（ワンピースの英語名データ）は Actions の共有 IP だと回数制限に当たるので、トークンを付ける
     if (process.env.GITHUB_TOKEN) await page.route('https://api.github.com/**', r => r.continue({ headers: { ...r.request().headers(), authorization: 'Bearer ' + process.env.GITHUB_TOKEN } }));
     if (MOCK) await page.route('**/*', r => { const f = `${MOCK}/${new URL(r.request().url()).hostname}.html`; return r.request().resourceType() === 'document' && fs.existsSync(f) ? r.fulfill({ contentType: 'text/html; charset=utf-8', body: fs.readFileSync(f, 'utf8') }) : r.continue(); });
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    http = res ? res.status() : 0;
     await page.waitForTimeout(/deck-maker|decklog/.test(url) ? 8000 : 3000);
     await page.evaluate(() => { try { navigator.clipboard.writeText = async () => {}; } catch (e) {} });
     await page.evaluate(SCRIPT);
@@ -50,15 +57,21 @@ for (const [label, url, opt = {}] of PAGES) {
       if (/✗/.test(m[0]) && !opt.allowCountNG) status = 'WARN';
     }
   } catch (e) {
-    status = 'NG'; detail = String(e.message || e).split('\n')[0].slice(0, 200);
+    status = 'NG'; detail = String(e.message || e).split('\n')[0].slice(0, 160);
+    // ページの状態を記録（アクセス拒否・ボット確認の画面なら BLOCK として別扱い）
+    let title = '', text = '';
+    try { title = await page.title(); text = (await page.evaluate(() => document.body ? document.body.innerText.split('untapへ転送 v')[0] : '')).replace(/\s+/g, ' ').slice(0, 160); } catch (e2) {}
+    if (http >= 400 || BLOCK_RE.test(title + ' ' + text)) status = 'BLOCK';
+    detail += ` ／ HTTP ${http} ／ タイトル「${title.slice(0, 60)}」 ／ 本文「${text}」`;
   }
   results.push([status, label, detail, url]);
   console.log(`[${status}] ${label}: ${detail}`);
   await page.close();
 }
+await context.close();
 await browser.close();
 
-const ng = results.filter(r => r[0] !== 'OK');
-const md = ['## untapへ転送 自動点検', '', '| 結果 | サイト | 内容 |', '|---|---|---|', ...results.map(([s, l, d, u]) => `| ${s === 'OK' ? '✅' : s === 'WARN' ? '⚠️' : '❌'} ${s} | [${l}](${u}) | ${d.replace(/\|/g, '/')} |`)].join('\n');
+const ng = results.filter(r => r[0] === 'NG' || r[0] === 'WARN');
+const md = ['## untapへ転送 自動点検', '', '🚫 BLOCK = GitHub（海外のサーバー）からの接続が拒否されたサイト。ツールの故障ではないので失敗扱いにしません。', '', '| 結果 | サイト | 内容 |', '|---|---|---|', ...results.map(([s, l, d, u]) => `| ${s === 'OK' ? '✅' : s === 'WARN' ? '⚠️' : s === 'BLOCK' ? '🚫' : '❌'} ${s} | [${l}](${u}) | ${d.replace(/\|/g, '/')} |`)].join('\n');
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
 if (ng.length) { console.error(`\n${ng.length} サイトで問題がありました（NG=読み取り失敗、WARN=枚数が合わない）`); process.exit(1); }
