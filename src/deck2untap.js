@@ -4,12 +4,12 @@
  *   遊戯王    : tcg-portal.jp（大会結果・投稿デッキ）/ deck-maker.com（デッキ編集画面）
  *   ポケモン  : cardrush.media / tcg-portal.jp / pokemon-card.com（デッキ表示）
  *   デュエマ  : tcg-portal.jp / deck-maker.com（英語名は Duel Masters Wiki を検索して照合）
- *   ヴァイス  : ws-tcg.com（公式デッキレシピ）/ decklog.bushiroad.com（英語名は HoC を見てユーザーが入力、ブラウザに保存）
+ *   ヴァイス  : ws-tcg.com（公式デッキレシピ）/ decklog.bushiroad.com（英語名は登録担当が作る ws-names.json から。未登録はその場で作成依頼）
  *   ヴァンガード: cf-vanguard.com（入賞者デッキレシピ）/ decklog.bushiroad.com（英語名は Cardfight!! Vanguard Wiki をカード番号で照合）
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v19';
+  const C2U_VER = 'v20';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -450,7 +450,7 @@
     return vgDecks(decks);
   };
 
-  /* ================= ヴァイスシュヴァルツ（英語名はユーザーが HoC で確認して入力 → ブラウザに保存） ================= */
+  /* ================= ヴァイスシュヴァルツ（英語名は ws-names.json＝登録担当が untap に登録した名前だけを使う） ================= */
   const WS_KEY = 'c2u-ws-names-v1';
   const wsDict = () => { try { return JSON.parse(localStorage.getItem(WS_KEY) || '{}'); } catch (e) { return {}; } };
   const wsSave = d => { try { localStorage.setItem(WS_KEY, JSON.stringify(d)); } catch (e) {} };
@@ -465,77 +465,52 @@
     return m ? `https://ws-tcg.com/wordpress/wp-content/images/cardlist/${m[1][0]}/${m[1]}_${m[2]}/${m[1]}_${m[2]}_${m[3]}.png` : '';
   };
   const wsHoc = no => 'https://heartofthecards.com/code/cardlist.html?card=WS_' + encodeURI(no);
-  // デッキを開いたときの編集画面：番号・日本語名・枚数・英語名入力・HoC／画像リンク
+  // 名前が英字だけ（例「Shiny Days」）：untap は名前で探すので、英語版の同名の別カードが入ることがある
+  const wsAscii = nm => /[A-Za-z]/.test(nm) && !/[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ]/.test(nm);
+  // デッキを開いたときの画面：untap に登録済みか（ws-names.json にあるか）を判定し、未登録はその場で作成依頼
+  // ※ HoC の訳は転載禁止なので、英語名の手入力欄は置かない（v20〜。以前ブラウザに保存した手入力の英語名も使わない）
   const wsEditor = (info, rows, title, remote = {}) => {
-    const dict = { ...remote, ...wsDict() };
-    const nRemote = Object.keys(remote).length;
     const S = 'style="color:#8ab4ff;text-decoration:underline"';
+    const st = rows.map(([no, jp]) => remote[no] ? 'ok' : wsAscii(jp) ? 'chk' : 'new');
+    const nOk = st.filter(x => x === 'ok').length, nNew = st.filter(x => x === 'new').length, nChk = st.filter(x => x === 'chk').length;
+    const line = ([no, jp, q]) => `${q} ${remote[no] || jp} (${no.toLowerCase()})`;
+    const badge = { ok: '<span style="color:#9be29b">登録済み</span>', new: '<span style="color:#ffb454">未登録</span>', chk: '<span style="color:#ffd27a">要確認</span>' };
     info.innerHTML =
-      `<div style="font-size:12px;opacity:.8;margin:6px 0">英語名を入れた行は英語名で、空欄の行は日本語名で出力します（untap に日本語名でカスタム登録済みならそのまま入ります）。入力した英語名はこのサイトのブラウザに保存され、次回から自動で入ります。</div>` +
+      `<div style="margin:6px 0;padding:6px;border-radius:6px;background:#1c1c1c;font-size:13px">` +
+      (nOk === rows.length ? `<b style="color:#9be29b">untap に全部登録済み（${rows.length} 種類）</b>。そのまま取り込めます。`
+        : `untap に登録済み <b>${nOk} / ${rows.length}</b> 種類。` + (nNew ? `<span style="color:#ffb454">未登録 ${nNew} 種類</span>は untap に取り込めないので、登録をお願いできます。` : '') +
+          (nChk ? `<span style="color:#ffd27a">要確認 ${nChk} 種類</span>は名前が英字だけなので、英語版の同じ名前の別カードが入るかもしれません。` : '')) + `</div>` +
       `<table style="width:100%;border-collapse:collapse;font-size:12px">` +
       rows.map(([no, jp, q], i) =>
-        `<tr style="border-top:1px solid #333"><td style="padding:3px 2px;white-space:nowrap">${q}×</td>` +
-        `<td style="padding:3px 2px"><div>${esc(jp)}</div><div style="opacity:.6">${esc(no)} · <a ${S} target="_blank" rel="noopener" href="${esc(wsHoc(no))}">HoC</a>` +
-        (wsImg(no) ? ` · <a ${S} target="_blank" rel="noopener" href="${esc(wsImg(no))}">画像</a>` : '') + `</div>` +
-        `<input data-i="${i}" placeholder="英語名（HoCで確認）" value="${esc(dict[no] || '')}" style="all:unset;box-sizing:border-box;width:100%;margin-top:2px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee"></td></tr>`).join('') +
+        `<tr style="border-top:1px solid #333"><td style="padding:3px 2px;white-space:nowrap;vertical-align:top">${q}×</td>` +
+        `<td style="padding:3px 2px"><div>${esc(jp)} ${badge[st[i]]}</div>` + (remote[no] ? `<div style="opacity:.75">${esc(remote[no])}</div>` : '') +
+        `<div style="opacity:.6">${esc(no)}` + (wsImg(no) ? ` · <a ${S} target="_blank" rel="noopener" href="${esc(wsImg(no))}">画像</a>` : '') +
+        ` · <a ${S} target="_blank" rel="noopener" href="${esc(wsHoc(no))}" title="ファンの英訳サイト。読むだけ（転載禁止なので登録には使いません）">効果を読む（HoC）</a></div></td></tr>`).join('') +
       `</table><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` +
-      `<button data-a="copy" style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 10px">untap用にコピー</button>` +
-      `<button data-a="list" style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:4px 10px">カスタム登録用の一覧をコピー</button></div>` +
-      `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;font-size:12px">` +
-      `<button data-a="export" style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 8px">英語名データを書き出す</button>` +
-      `<button data-a="import" style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 8px">読み込む</button>` +
-      `<input type="file" accept=".json,application/json" style="display:none"></div>` +
-      `<div style="font-size:11px;opacity:.6;margin-top:4px">保存済みの英語名 ${Object.keys(dict).length} 件` + (nRemote ? `（うち GitHub の ws-names.json から ${nRemote} 件）` : '') + `</div>` +
+      `<button data-a="copy" style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 10px">untap用にコピー</button></div>` +
+      (nNew || nChk ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px;font-size:12px">未登録・要確認のカードは、登録をお願いできます。` +
+        `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input data-reqname placeholder="あなたの名前（任意）" value="${esc(reqName())}" style="all:unset;box-sizing:border-box;width:140px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee">` +
+        `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">作成依頼を送る</button>` +
+        `<button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
+        `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '') +
+      `<div style="font-size:11px;opacity:.6;margin-top:4px">英語名データ（登録担当が untap に登録した名前）${Object.keys(remote).length} 件を使っています</div>` +
       `<div class="c2u-ws-out" style="font-size:12px;margin-top:6px"></div>` + extrasHtml();
     const out = info.querySelector('.c2u-ws-out');
-    info.querySelectorAll('input[data-i]').forEach(inp => inp.addEventListener('input', () => {
-      const d = wsDict(), no = rows[inp.dataset.i][0], v = inp.value.trim();
-      if (v) d[no] = v; else delete d[no];
-      wsSave(d);
-    }));
-    const val = i => info.querySelector(`input[data-i="${i}"]`).value.trim();
-    const fileIn = info.querySelector('input[type=file]');
-    wireExtras(info, () => '//deck-1\n' + rows.map(([no, jp, q], i) => `${q} ${val(i) || jp} (${no.toLowerCase()})`).join('\n'),
-      () => notesText(title, '', rows.map(([no, jp], i) => [val(i), jp + '（' + no + '）']).filter(p => p[0])),
-      () => rows.map(([no, jp], i) => [val(i) || jp, jp]));
-    info.querySelector('[data-a="export"]').onclick = () => {
-      const all = { ...remote, ...wsDict() };
-      const keys = Object.keys(all).sort();
-      const data = JSON.stringify({ app: 'untapへ転送', kind: 'ws-names', saved: new Date().toISOString(), names: Object.fromEntries(keys.map(k => [k, all[k]])) }, null, 1);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
-      a.download = 'ws-names.json';
-      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-      out.innerHTML = `英語名 ${keys.length} 件を ws-names.json に書き出しました。GitHub のリポジトリ（d2u.js と同じ場所）に上書きアップロードしておくと、どのサイト・どの PC でも自動で読み込まれます。`;
-      log('ws-names 書き出し ' + keys.length + '件');
-    };
-    info.querySelector('[data-a="import"]').onclick = () => fileIn.click();
-    fileIn.onchange = async () => {
-      const f = fileIn.files && fileIn.files[0];
-      if (!f) return;
-      try {
-        const j = JSON.parse(await f.text()), add = j.names || j, d = wsDict();
-        let n = 0;
-        for (const k in add) if (typeof add[k] === 'string' && add[k].trim() && !d[k]) { d[k] = add[k].trim(); n++; }
-        wsSave(d);
-        info.querySelectorAll('input[data-i]').forEach(inp => { const no = rows[inp.dataset.i][0]; if (!inp.value && d[no]) inp.value = d[no]; });
-        out.innerHTML = `<span style="color:#9be29b">${n} 件を読み込みました</span>（すでに入力済みの英語名はそのまま残しています）。`;
-        log('ws-names 読み込み ' + n + '件');
-      } catch (e) { out.innerHTML = `<span style="color:#ff7b7b">読み込めませんでした（書き出した ws-names.json を選んでください）</span>`; }
-      fileIn.value = '';
-    };
+    wireExtras(info, () => '//deck-1\n' + rows.map(line).join('\n'),
+      () => notesText(title, '', rows.filter(([no]) => remote[no]).map(([no, jp]) => [remote[no], jp + '（' + no + '）'])),
+      () => rows.map(([no, jp]) => [remote[no] || jp, jp]));
     info.querySelector('[data-a="copy"]').onclick = async () => {
-      // (番号) を付ける：untap の Set / Release Identifier と一致すればその版、登録後の照合にも使う
-      const lines = rows.map(([no, jp, q], i) => `${q} ${val(i) || jp} (${no.toLowerCase()})`);
-      await copyText(withMeta('//deck-1\n' + lines.join('\n'), title, ''));
-      const left = rows.filter((r, i) => !val(i)).length;
-      out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (left ? `<span style="color:#ffb454">英語名が空欄のカード ${left} 種は日本語名のまま出力しています。</span>` : '') + countCheck('//deck-1\n' + lines.join('\n'), 'ws');
+      // (番号) を付ける：untap は名前で探し、同じ名前のカードが複数あれば番号の版を選ぶ
+      const text = '//deck-1\n' + rows.map(line).join('\n');
+      await copyText(withMeta(text, title, ''));
+      out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (nNew ? `<span style="color:#ffb454">未登録の ${nNew} 種類は取り込めません（日本語名のまま入れています）。</span>` : '') + countCheck(text, 'ws');
     };
-    info.querySelector('[data-a="list"]').onclick = async () => {
-      const t = rows.filter((r, i) => !val(i)).map(([no, jp]) => [no, jp, wsImg(no), wsHoc(no)].join('\t'));
-      await copyText(t.length ? '番号\t日本語名\t画像\tHoC\n' + t.join('\n') : '');
-      out.innerHTML = t.length ? `英語名が空欄の ${t.length} 種を「番号・日本語名・画像URL・HoCのURL」の表でコピーしました（スプレッドシートに貼れます）。` : '空欄のカードはありません。';
-    };
+    const failed = rows.filter((r, i) => st[i] === 'new').map(line), chk = rows.filter((r, i) => st[i] === 'chk').map(line);
+    const meta = { title, url: location.href }, ctx = { code: 'WSTCG', work: '' };
+    const rb = info.querySelector('[data-req]'), rs = info.querySelector('[data-reqsend]'), rn = info.querySelector('[data-reqname]'), ro = info.querySelector('.c2u-req-out');
+    if (rn) rn.oninput = () => { try { localStorage.setItem(REQ_NAME_KEY, rn.value.trim()); } catch (e) {} };
+    if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, 'ws', false, chk, ctx)); ro.textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
+    if (rs) rs.onclick = () => sendReq(failed, meta, 'ws', ro, chk, ctx).catch(e => { ro.innerHTML = errHtml(e); });
   };
   const wsDeck = (title, sub, load, el) => ({ title, sub, ws: true, load, el });
 
@@ -795,6 +770,39 @@
     const name = body.replace(/\s*[\[(][^\[\]()]*[\])]\s*$/, '').trim();
     return game === 'vg' ? 'x ' + name : name;
   };
+  // 友人からの依頼の入口（Google フォーム。依頼内容を事前入力して開く）
+  const REQ_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSfBI-qi51bINoY5ou9_KaH1jOK5RMtb8Yp7GXHrmlPU8xMRtw/viewform';
+  const REQ_ENTRY = 'entry.1346860428';
+  const REQ_NAME_KEY = 'c2u-req-name-v1';
+  const reqName = () => { try { return localStorage.getItem(REQ_NAME_KEY) || ''; } catch (e) { return ''; } };
+  const reqText = (failed, meta, g, forForm, chk = [], ctx = {}) => [
+    '【untap カード作成依頼】',
+    reqName() ? '依頼者: ' + reqName() : '',
+    'ゲーム: ' + (UT_NAMES[g] || g || '不明') + (ctx.code ? '（' + ctx.code + '）' : ''),
+    'デッキ: ' + (meta.title || '（名前なし）') + (meta.url ? ' | ' + meta.url : ''),
+    ctx.work ? 'untap の作業用デッキ: ' + ctx.work : '',
+    '未登録カード（' + failed.length + ' 行）:',
+    ...failed.map(l => {
+      const m = l.match(/^(\d+) (.+?)(?: \(([^)]+)\)| \[([^\]]+)\])?$/) || [];
+      const no = (m[3] || m[4] || '').toUpperCase();
+      return '- ' + [no || '（番号なし）', m[2] || l, (m[1] || '?') + '枚', !forForm && g === 'ws' && no ? wsImg(no) : ''].filter(Boolean).join(' | ');
+    }),
+    ...(chk.length ? ['要確認（名前だけで別のカードが入ったかもしれない ' + chk.length + ' 行。この番号で登録されているか確認してください）:',
+      ...chk.map(l => { const m = l.match(/^(\d+) (.+?) \(([^)]+)\)$/) || []; const no = (m[3] || '').toUpperCase();
+        return '- ' + [no, m[2] || l, (m[1] || '?') + '枚', !forForm && no ? wsImg(no) : ''].filter(Boolean).join(' | '); })] : []),
+  ].filter(Boolean).join('\n');
+  const sendReq = async (failed, meta, g, msg, chk = [], ctx = {}) => {
+    const t = reqText(failed, meta, g, true, chk, ctx);
+    const url = REQ_FORM + '?usp=pp_url&' + REQ_ENTRY + '=' + encodeURIComponent(t);
+    const long = url.length > 7000;
+    if (long) await copyText(t);
+    const a = document.createElement('a'); a.href = long ? REQ_FORM : url; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    msg.innerHTML = long
+      ? '<span style="color:#ffb454">依頼が長いので、内容をコピーしました。開いたフォームの「依頼内容」に貼り付けて「送信」を押してください。</span>'
+      : '<span style="color:#9be29b">依頼フォームを開きました。内容を確認して「送信」を押してください。</span>登録が終わったら、もう一度取り込むと入ります。';
+    log('作成依頼を送る ' + failed.length + '行' + (chk.length ? ' 要確認' + chk.length : '') + (long ? '（コピー）' : ''));
+  };
   const untapMode = async () => {
     const w = ms => new Promise(r => setTimeout(r, ms));
     const byText = (sel, re) => [...document.querySelectorAll(sel)].find(e => re.test(e.textContent.trim()) && e.offsetParent !== null);
@@ -845,42 +853,9 @@
     // そのため英語名データに無く名前が英字だけのカードは、英語版の同名の別カードが黙って入ることがある → 取り込み後に警告
     const wsRisky = (text, names) => text.split('\n').map(s => s.trim()).filter(l => {
       const m = l.match(/^\d+ (.+?) \(([a-z0-9]+\/[a-z0-9]+-[a-z0-9]+)\)$/i);
-      return m && !names[m[2].toUpperCase()] && /[A-Za-z]/.test(m[1]) && !/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uff66-\uff9f]/.test(m[1]);
+      return m && !names[m[2].toUpperCase()] && wsAscii(m[1]);
     });
     let last = null; // 最後に取り込んだデッキ（再取り込み用）
-    // 友人からの依頼の入口（Google フォーム。依頼内容を事前入力して開く）
-    const REQ_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSfBI-qi51bINoY5ou9_KaH1jOK5RMtb8Yp7GXHrmlPU8xMRtw/viewform';
-    const REQ_ENTRY = 'entry.1346860428';
-    const REQ_NAME_KEY = 'c2u-req-name-v1';
-    const reqName = () => { try { return localStorage.getItem(REQ_NAME_KEY) || ''; } catch (e) { return ''; } };
-    const reqText = (failed, meta, g, forForm, chk = []) => [
-      '【untap カード作成依頼】',
-      reqName() ? '依頼者: ' + reqName() : '',
-      'ゲーム: ' + (UT_NAMES[g] || g || '不明') + (code ? '（' + code + '）' : ''),
-      'デッキ: ' + (meta.title || '（名前なし）') + (meta.url ? ' | ' + meta.url : ''),
-      'untap の作業用デッキ: ' + location.href,
-      '未登録カード（' + failed.length + ' 行）:',
-      ...failed.map(l => {
-        const m = l.match(/^(\d+) (.+?)(?: \(([^)]+)\)| \[([^\]]+)\])?$/) || [];
-        const no = (m[3] || m[4] || '').toUpperCase();
-        return '- ' + [no || '（番号なし）', m[2] || l, (m[1] || '?') + '枚', !forForm && g === 'ws' && no ? wsImg(no) : ''].filter(Boolean).join(' | ');
-      }),
-      ...(chk.length ? ['要確認（名前だけで別のカードが入ったかもしれない ' + chk.length + ' 行。この番号で登録されているか確認してください）:',
-        ...chk.map(l => { const m = l.match(/^(\d+) (.+?) \(([^)]+)\)$/) || []; const no = (m[3] || '').toUpperCase();
-          return '- ' + [no, m[2] || l, (m[1] || '?') + '枚', !forForm && no ? wsImg(no) : ''].filter(Boolean).join(' | '); })] : []),
-    ].filter(Boolean).join('\n');
-    const sendReq = async (failed, meta, g, msg, chk = []) => {
-      const t = reqText(failed, meta, g, true, chk);
-      const url = REQ_FORM + '?usp=pp_url&' + REQ_ENTRY + '=' + encodeURIComponent(t);
-      const long = url.length > 7000;
-      if (long) await copyText(t);
-      const a = document.createElement('a'); a.href = long ? REQ_FORM : url; a.target = '_blank'; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); a.remove();
-      msg.innerHTML = long
-        ? '<span style="color:#ffb454">依頼が長いので、内容をコピーしました。開いたフォームの「依頼内容」に貼り付けて「送信」を押してください。</span>'
-        : '<span style="color:#9be29b">依頼フォームを開きました。内容を確認して「送信」を押してください。</span>登録が終わったら、もう一度取り込むと入ります。';
-      log('作成依頼を送る ' + failed.length + '行' + (chk.length ? ' 要確認' + chk.length : '') + (long ? '（コピー）' : ''));
-    };
     const doImport = async (text, meta, out) => {
       if (!onDeck) throw new Error('untap のデッキ編集画面（Decks → デッキを開いた画面）で実行してください');
       const g2 = guessGame(text);
@@ -909,8 +884,8 @@
           `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '');
       const rb = out.querySelector('[data-req]'), rs = out.querySelector('[data-reqsend]'), rn = out.querySelector('[data-reqname]');
       if (rn) rn.oninput = () => { try { localStorage.setItem(REQ_NAME_KEY, rn.value.trim()); } catch (e) {} };
-      if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, g, false, chk)); out.querySelector('.c2u-req-out').textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
-      if (rs) rs.onclick = () => sendReq(failed, meta, g, out.querySelector('.c2u-req-out'), chk).catch(e => { out.querySelector('.c2u-req-out').innerHTML = errHtml(e); });
+      if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, g, false, chk, { code, work: location.href })); out.querySelector('.c2u-req-out').textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
+      if (rs) rs.onclick = () => sendReq(failed, meta, g, out.querySelector('.c2u-req-out'), chk, { code, work: location.href }).catch(e => { out.querySelector('.c2u-req-out').innerHTML = errHtml(e); });
       renderHist();
       return failed;
     };
@@ -1102,7 +1077,7 @@
     log('開始: ' + location.hostname);
     const decks = await site();
     log('デッキ ' + decks.length + ' 件: ' + decks.map(d => d.title + '（' + d.sub + '）').join(' / ').slice(0, 400));
-    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→ 英語名を確認・入力 →「untap用にコピー」→ untap の Paste Deck に貼り付け' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
+    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→ untap に登録済みか確認（未登録は作成依頼）→「untap用にコピー」→ untap に取り込む' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
     for (const d of decks) {
       const box = document.createElement('div');
       box.style.cssText = 'border:1px solid #3a3d44;border-radius:8px;padding:8px;margin-bottom:8px';

@@ -201,20 +201,30 @@ export default [
       <div class="card-item"><img src="https://ws-tcg.com/x.png" title="GU/WE46-60GUR : マヤ・スロウス"><span class="num">2</span></div>
       <div class="card-item"><img src="https://ws-tcg.com/y.png" title="GU/WE46-39 : にっこりカフェの魔法使い"><span class="num">4</span></div>`,
     steps: async p => {
-      await p.click('#c2u-body button'); await p.waitForSelector('#c2u-panel input[data-i]');
-      await p.fill('#c2u-panel input[data-i="0"]', '"Bath Time" Rize');
+      await p.click('#c2u-body button'); await p.waitForSelector('#c2u-panel [data-a="copy"]');
       await p.click('[data-a="copy"]'); await p.waitForTimeout(200);
     },
   },
   {
     name: 'ws-official', url: 'https://ws-tcg.com/deckrecipe/?x=1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: { 'GU/WE46-66': 'That One Step' } }) },
     html: `<div class="deckrecipeBlock">成績\n優勝\nハンドルネーム\nパスタ\nデッキコード\n6472W\nデッキ名\nごちうさ門扉\n<div class="js-recipe-detail-container"></div>
       <a class="js-recipe-load-detail" href="javascript:;" onclick="setTimeout(()=>{this.parentElement.querySelector('.js-recipe-detail-container').innerHTML='<table><tr><th>番号</th><th>カード名</th><th>LV</th><th>枚数</th></tr><tr><td>GU/WE46-62GUR</td><td>チノ・エンヴィ</td><td>3/2</td><td>4枚</td></tr><tr><td>GU/WE46-66</td><td>その一歩は</td><td>-/-</td><td>4枚</td></tr></table>'},100)">詳細を開く</a></div>`,
     steps: async p => {
-      await p.click('#c2u-body button'); await p.waitForSelector('#c2u-panel input[data-i]');
-      await p.fill('#c2u-panel input[data-i="1"]', 'That One Step');
+      await p.click('#c2u-body button'); await p.waitForSelector('#c2u-panel [data-a="copy"]');
       await p.click('[data-a="copy"]'); await p.waitForTimeout(200);
+      await p.evaluate(() => { const oc = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.target === '_blank') window.__opened = this.href; else oc.call(this); }; });
+      await p.evaluate(() => { window.__deck = window.__clip; });
+      await p.fill('[data-reqname]', 'はなこ');
+      await p.click('[data-reqsend]'); await p.waitForTimeout(200);
+      await p.click('[data-req]'); await p.waitForTimeout(200);
     },
+    result: async p => [
+      '=== untap用にコピー ===', await p.evaluate(() => window.__deck),
+      '=== 表示 ===', await p.innerText('#c2u-panel'),
+      '=== 依頼フォーム（事前入力） ===', await p.evaluate(() => decodeURIComponent((window.__opened || '').split('entry.1346860428=')[1] || '')),
+      '=== 依頼内容をコピー ===', await p.evaluate(() => window.__clip),
+    ].join('\n'),
   },
   {
     name: 'untap-import', url: 'https://untap.in/deck/abc',

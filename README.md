@@ -10,7 +10,7 @@
 | パス | 中身 |
 |---|---|
 | `d2u.js` | 配布用の本体（圧縮済み）。**ブックマークはこれを読み込む**。`tools/build.mjs` で作る |
-| `ws-names.json` | （任意）ヴァイスの英語名データ。パネルの「書き出す」で作ったファイルを置くと自動で読み込まれる |
+| `ws-names.json` | ヴァイスの英語名データ（番号 → untap の登録名）。登録担当が更新する。名前は untap.in の登録名、または公式の日本語からの自訳 |
 | `src/deck2untap.js` | 本体の元のソース（読みやすい版）。修正はここに入れる |
 | `src/loader.js` | ブックマークに登録する短いコード（`d2u.js` を読み込むだけ） |
 | `data/pokemon-jp-en.json` | ポケモンの日本語名→英語名の辞書（1747件、2026/9 時点）。組み立て時に圧縮して埋め込む |
@@ -56,7 +56,7 @@ npm test             # 見本どおりか確認
 | ポケモン | cardrush.media、tcg-portal.jp、pokemon-card.com（デッキ表示） | `data/pokemon-jp-en.json`（Limitless の日本版一覧＋英語版トレーナーズ名） |
 | デュエマ | tcg-portal.jp、deck-maker.com | Duel Masters Wiki を検索し、ページの日本語名と照合 |
 | ヴァンガード | cf-vanguard.com（入賞者レシピ）、decklog.bushiroad.com | Cardfight!! Vanguard Wiki をカード番号で照合 |
-| ヴァイス | ws-tcg.com（デッキレシピ）、decklog.bushiroad.com | 自動変換なし。パネルで HoC を見て英語名を入力（ブラウザに保存・書き出し可） |
+| ヴァイス | ws-tcg.com（デッキレシピ）、decklog.bushiroad.com | ws-names.json で英語名に変換。パネルで untap に登録済みかを判定し、未登録はその場で作成依頼 |
 
 ## untap の貼り付け形式（調べて分かったこと）
 
@@ -74,4 +74,4 @@ npm test             # 見本どおりか確認
 - 新しい弾のカードは、英語名のデータや untap の登録が追いつくまで取り込めない（パネルにオレンジで出て、調べるページへのリンクが付く）
 - ヴァイスの日本版の新しい弾は untap に未登録のことが多い（カスタム登録が必要。登録は全ユーザーに公開される）
 - cardrush は海外からのアクセスを拒否するため、自動点検の対象外（🚫 BLOCK と表示）
-- ブラウザに保存する設定（ヴァイスの英語名、ドン!!の選択）はサイトごと・ブラウザごと。untap の履歴は untap 側に保存
+- ブラウザに保存する設定（ドン!!の選択など）はサイトごと・ブラウザごと。untap の履歴は untap 側に保存
