@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v27';
+  const C2U_VER = 'v28';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -1027,13 +1027,14 @@
               (cs.length ? `<div style="color:#ffd27a;font-size:11px;margin:4px 0 2px 20px">untap に候補があります。同じカードなら「これを使う」を選ぶと、依頼しなくても取り込めます。</div>` +
                 `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:20px;font-size:11px">` +
                 (g === 'ws' && wsImg(no) ? `<div style="width:78px;text-align:center;opacity:.9"><img data-zoom src="${esc(wsImg(no))}" alt="" title="押すと大きく表示" style="width:74px;border-radius:3px;border:1px solid #666;cursor:zoom-in"><div>公式（日本語版）</div></div>` : '') +
-                cs.map((h, j) => `<div style="width:118px;padding:3px;border:1px solid #444;border-radius:4px">` +
+                cs.map((h, j) => `<div data-cand="${i}:${j}" title="押して選ぶ" style="width:118px;padding:3px;border:2px solid #444;border-radius:6px;cursor:pointer">` +
                   (h.img ? `<img data-zoom src="${esc(h.img)}" alt="" title="押すと大きく表示" style="width:74px;display:block;margin:0 auto 2px;border-radius:3px;cursor:zoom-in">` : '') +
                   `<div style="color:#eee;word-break:break-word">${esc(h.title)}</div><div style="opacity:.7">登録番号 ${esc(h.set)}${h.by ? ' · ' + esc(h.by) : ''}</div>` +
                   (cs.length > 1 && h.usage > 0 && h.usage === maxU ? `<div style="color:#9be29b">よく使われている</div>` : '') +
-                  `<label style="display:block;margin-top:2px;cursor:pointer"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="${j}"> これを使う</label>` +
+                  `<label style="display:block;margin-top:2px;cursor:pointer"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="${j}" style="appearance:auto;-webkit-appearance:radio;opacity:1;position:static;width:auto;height:auto;margin:0 3px 0 0"><span data-plab>これを使う</span></label>` +
                   `<button data-cp="${esc(h.title)}" style="all:unset;cursor:pointer;color:#8ab4ff;text-decoration:underline">名前をコピー</button></div>`).join('') +
-                `<label style="align-self:center;cursor:pointer"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="" checked> どれでもない</label></div>` : '') +
+                `<label data-cand="${i}:" style="align-self:center;cursor:pointer;padding:4px 6px;border:2px solid #666;border-radius:6px"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="" checked style="appearance:auto;-webkit-appearance:radio;opacity:1;position:static;width:auto;height:auto;margin:0 3px 0 0">どれでもない</label></div>` +
+                `<div data-picked="${i}" style="margin:3px 0 0 20px;font-size:12px;color:#ffb454">未選択：このカードは依頼に入ります</div>` : '') +
               `</div>`;
           }).join('') +
           `<div data-pickbar style="display:none;margin-top:6px"><button data-repick style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">選んだカードで取り込み直す</button> <span style="font-size:11px;opacity:.8">選んだ英語名はこのブラウザに保存し、依頼を送ると登録担当にも報告されます</span></div>` +
@@ -1060,8 +1061,27 @@
         const c = out.querySelector(`[data-inc="${i}"]`);
         if (j === '') { delete picks[i]; if (c) c.checked = true; }
         else { picks[i] = cs[Number(j)]; if (c) c.checked = false; }
+        showPick(i);
         upd();
       });
+      // 選んだ候補を目立たせる（untap の画面ではラジオボタンの丸が見えないことがあるため、枠の色と文字で示す）
+      function showPick(i) {
+        const p = picks[i];
+        out.querySelectorAll(`[data-cand^="${i}:"]`).forEach(b => {
+          const j = b.dataset.cand.split(':')[1], on = p ? j !== '' && (look.cand[noOf(failed[i])] || [])[Number(j)] === p : j === '';
+          b.style.borderColor = on ? '#4c8dff' : (j === '' ? '#666' : '#444'); b.style.background = on ? '#1d2a44' : '';
+          const lab = b.querySelector('[data-plab]'); if (lab) lab.textContent = on ? '✓ 選択中' : 'これを使う';
+          if (lab) lab.style.color = on ? '#8ab4ff' : '';
+        });
+        const st = out.querySelector(`[data-picked="${i}"]`);
+        if (st) { st.textContent = p ? `✓ 選択中：「${p.title}」を使う（依頼には入れません。一覧の下の「選んだカードで取り込み直す」で反映）` : '未選択：このカードは依頼に入ります'; st.style.color = p ? '#8ab4ff' : '#ffb454'; }
+      }
+      // 候補の枠のどこを押しても選べる（名前をコピー・画像の拡大は除く）
+      out.querySelectorAll('[data-cand]').forEach(b => b.addEventListener('click', ev => {
+        if (ev.target.closest('[data-cp], img[data-zoom], input')) return;
+        const r = b.querySelector('input[type=radio]'); if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+      }));
+      out.querySelectorAll('[data-picked]').forEach(e => showPick(Number(e.dataset.picked)));
       out.querySelectorAll('[data-inc]').forEach(c => c.onchange = upd);
       out.querySelectorAll('[data-cp]').forEach(b => b.onclick = async () => { await copyText(b.dataset.cp); out.querySelector('.c2u-cp-out').textContent = `「${b.dataset.cp}」をコピーしました。untap 左上の「Search cards」に貼ると、大きな画像で確かめられます。`; });
       const addPicks = () => {

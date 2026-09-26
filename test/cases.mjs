@@ -322,7 +322,8 @@ export default [
       await p.click('[data-zoom]');
       await p.evaluate(() => { window.__zoom = [...document.querySelectorAll('body > div')].some(d => /zoom-out/.test(d.style.cssText)); [...document.querySelectorAll('body > div')].filter(d => /zoom-out/.test(d.style.cssText)).forEach(d => d.click()); });
       const before = await p.innerText('.c2u-ut-out');
-      await p.check('[data-pick="0"][data-j="0"]');
+      await p.click('[data-cand="0:0"] div');  // 候補の枠を押して選ぶ
+      await p.evaluate(() => { window.__picked = document.querySelector('[data-picked="0"]').innerText + ' / ' + [...document.querySelectorAll('[data-cand^="0:"]')].map(b => b.dataset.cand + '=' + (b.style.borderColor || '-') + (b.querySelector('[data-plab]') ? '(' + b.querySelector('[data-plab]').textContent + ')' : '')).join(' ') + ' / 取り込み直しボタン=' + (document.querySelector('[data-pickbar]').style.display || '表示'); });
       await p.evaluate(b => { window.__before = b; }, before);
       await p.click('[data-repick]');
       await p.waitForFunction(() => /候補から選んだ/.test(document.querySelector('.c2u-ut-out').innerText), null, { timeout: 15000 });
@@ -345,6 +346,7 @@ export default [
     result: async p => [
       '=== 最小化 → 戻す ===', await p.evaluate(() => window.__min),
       '=== 画像を押すと拡大 ===', String(await p.evaluate(() => window.__zoom)),
+      '=== 候補を選んだ直後 ===', await p.evaluate(() => window.__picked),
       '=== 選ぶ前の表示 ===', await p.evaluate(() => window.__before),
       '=== 取り込み直しで貼った内容 ===', await p.evaluate(() => window.__imported),
       '=== 取り込み直し後の表示 ===', await p.innerText('.c2u-ut-out'),
