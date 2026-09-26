@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v21';
+  const C2U_VER = 'v22';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -474,11 +474,11 @@
     const st = rows.map(([no, jp]) => remote[no] ? 'ok' : wsAscii(jp) ? 'chk' : 'new');
     const nOk = st.filter(x => x === 'ok').length, nNew = st.filter(x => x === 'new').length, nChk = st.filter(x => x === 'chk').length;
     const line = ([no, jp, q]) => `${q} ${remote[no] || jp} (${no.toLowerCase()})`;
-    const badge = { ok: '<span style="color:#9be29b">登録済み</span>', new: '<span style="color:#ffb454">未登録</span>', chk: '<span style="color:#ffd27a">要確認</span>' };
+    const badge = { ok: '<span style="color:#9be29b">登録済み</span>', new: '<span style="color:#ffb454">データに無し</span>', chk: '<span style="color:#ffd27a">要確認</span>' };
     info.innerHTML =
       `<div style="margin:6px 0;padding:6px;border-radius:6px;background:#1c1c1c;font-size:13px">` +
-      (nOk === rows.length ? `<b style="color:#9be29b">untap に全部登録済み（${rows.length} 種類）</b>。そのまま取り込めます。`
-        : `untap に登録済み <b>${nOk} / ${rows.length}</b> 種類。` + (nNew ? `<span style="color:#ffb454">未登録 ${nNew} 種類</span>は今のままでは取り込めません。untap にあるか調べて、無ければ登録してもらえます。` : '') +
+      (nOk === rows.length ? `<b style="color:#9be29b">全部英語名データにあります（${rows.length} 種類）</b>。そのまま取り込めます。`
+        : `英語名データにある <b>${nOk} / ${rows.length}</b> 種類。` + (nNew ? `<span style="color:#ffb454">データに無い ${nNew} 種類</span>は、untap に取り込むときに番号で探します（他の人が登録済みなら、そのまま入ります）。` : '') +
           (nChk ? `<span style="color:#ffd27a">要確認 ${nChk} 種類</span>は名前が英字だけなので、英語版の同じ名前の別カードが入るかもしれません。` : '')) + `</div>` +
       `<table style="width:100%;border-collapse:collapse;font-size:12px">` +
       rows.map(([no, jp, q], i) =>
@@ -488,11 +488,11 @@
         ` · <a ${S} target="_blank" rel="noopener" href="${esc(wsHoc(no))}" title="ファンの英訳サイト。読むだけ（転載禁止なので登録には使いません）">効果を読む（HoC）</a></div></td></tr>`).join('') +
       `</table><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` +
       `<button data-a="copy" style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 10px">untap用にコピー</button></div>` +
-      (nNew || nChk ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px;font-size:12px">未登録・要確認のカードは、untap にあるか調べて、無ければ登録してもらえます。` +
+      (nNew || nChk ? `<details style="margin-top:6px;font-size:12px"><summary style="cursor:pointer;opacity:.8">untap で取り込む前に頼む</summary><div style="padding:6px;border:1px dashed #555;border-radius:6px;margin-top:4px">ふつうは、untap で取り込んでから「入らなかったカードだけ」頼めば十分です（取り込むときに番号で探すので、依頼が減ります）。先に頼んでおきたいときはこちら。` +
         `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input data-reqname placeholder="あなたの名前（任意）" value="${esc(reqName())}" style="all:unset;box-sizing:border-box;width:140px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee">` +
-        `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">照合・登録を頼む</button>` +
-        `<button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
-        `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '') +
+        `<button data-reqsend style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">照合・登録を頼む</button>` +
+        `<button data-req style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
+        `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div></details>` : '') +
       `<div style="font-size:11px;opacity:.6;margin-top:4px">英語名データ（登録担当が untap に登録した名前）${Object.keys(remote).length} 件を使っています</div>` +
       `<div class="c2u-ws-out" style="font-size:12px;margin-top:6px"></div>` + extrasHtml();
     const out = info.querySelector('.c2u-ws-out');
@@ -503,7 +503,7 @@
       // (番号) を付ける：untap は名前で探し、同じ名前のカードが複数あれば番号の版を選ぶ
       const text = '//deck-1\n' + rows.map(line).join('\n');
       await copyText(withMeta(text, title, ''));
-      out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (nNew ? `<span style="color:#ffb454">未登録の ${nNew} 種類は取り込めません（日本語名のまま入れています）。</span>` : '') + countCheck(text, 'ws');
+      out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (nNew ? `<span style="color:#ffb454">データに無い ${nNew} 種類は日本語名のまま入れています（untap で取り込むときに番号で探します）。</span>` : '') + countCheck(text, 'ws');
     };
     const failed = rows.filter((r, i) => st[i] === 'new').map(line), chk = rows.filter((r, i) => st[i] === 'chk').map(line);
     const meta = { title, url: location.href }, ctx = { code: 'WSTCG', work: '' };
@@ -781,11 +781,13 @@
     'ゲーム: ' + (UT_NAMES[g] || g || '不明') + (ctx.code ? '（' + ctx.code + '）' : ''),
     'デッキ: ' + (meta.title || '（名前なし）') + (meta.url ? ' | ' + meta.url : ''),
     ctx.work ? 'untap の作業用デッキ: ' + ctx.work : '',
+    g === 'ws' ? '照合: ' + (ctx.check || (ctx.work ? 'まだ' : 'まだ（デッキのページから）')) : '',
     '未登録カード（' + failed.length + ' 行）:',
     ...failed.map(l => {
       const m = l.match(/^(\d+) (.+?)(?: \(([^)]+)\)| \[([^\]]+)\])?$/) || [];
       const no = (m[3] || m[4] || '').toUpperCase();
-      return '- ' + [no || '（番号なし）', m[2] || l, (m[1] || '?') + '枚', !forForm && g === 'ws' && no ? wsImg(no) : ''].filter(Boolean).join(' | ');
+      const c = ctx.cand && no ? ctx.cand(no) : '';
+      return '- ' + [no || '（番号なし）', m[2] || l, (m[1] || '?') + '枚', !forForm && g === 'ws' && no ? wsImg(no) : '', c ? '候補: ' + c : ''].filter(Boolean).join(' | ');
     }),
     ...(chk.length ? ['要確認（名前だけで別のカードが入ったかもしれない ' + chk.length + ' 行。この番号で登録されているか確認してください）:',
       ...chk.map(l => { const m = l.match(/^(\d+) (.+?) \(([^)]+)\)$/) || []; const no = (m[3] || '').toUpperCase();
@@ -855,6 +857,40 @@
       const m = l.match(/^\d+ (.+?) \(([a-z0-9]+\/[a-z0-9]+-[a-z0-9]+)\)$/i);
       return m && !names[m[2].toUpperCase()] && wsAscii(m[1]);
     });
+    // ヴァイス：英語名データに無いカードを、untap の内部検索（card-search の sets）に番号でまとめて問い合わせる
+    // ・番号が完全に一致した登録だけ自動で使う（同じ番号に別の名前が複数あるときは使わず「候補」にする）
+    // ・区切りや 0 の有無が違う登録は「候補」として依頼に書き添えるだけ（別のカードを黙って入れないため）
+    // ※ untap の非公式な仕組み。使えないときは ok:false で今まで通りの流れに戻る
+    const utApi = () => { try { const e = [...document.querySelectorAll('*')].find(x => x.__vue__); const a = e && e.__vue__.$root && e.__vue__.$root.$api; return a && typeof a.send === 'function' ? a : null; } catch (e) { return null; } };
+    const wsVariants = no => {
+      const m = no.toLowerCase().match(/^([a-z0-9]+)\/([a-z0-9]+)-([a-z]*)(\d+)([a-z]*)$/); if (!m) return [];
+      const [, a, b, p, d, x] = m, nums = [...new Set([d, String(Number(d)), String(Number(d)).padStart(3, '0')])];
+      const out = new Set(); for (const n of nums) for (const sep of ['/', '-', '']) out.add(`${a}${sep}${b}-${p}${n}${x}`);
+      out.delete(no.toLowerCase()); return [...out];
+    };
+    const wsLookup = async nos => {
+      const api = utApi(), found = {}, cand = {};
+      if (!api || !nos.length) return { ok: !!api, found, cand };
+      const want = {}; // 問い合わせる番号 → 元の番号
+      for (const no of nos) { want[no.toLowerCase()] = no; for (const v of wsVariants(no)) if (!want[v]) want[v] = no; }
+      const keys = Object.keys(want), hits = {};
+      try {
+        for (let i = 0; i < keys.length; i += 30) {
+          const r = await Promise.race([api.send('card-search', { ccg: 'wstcg', sets: keys.slice(i, i + 30) }), w(10000).then(() => { throw new Error('timeout'); })]);
+          for (const c of (r && r.results) || []) for (const st of c.sets || []) {
+            const k = String(st.set || '').toLowerCase(); if (!(k in want)) continue;
+            (hits[k] = hits[k] || []).push({ title: c.title, set: st.set, by: st.added_by_username || '' });
+          }
+        }
+      } catch (e) { log('番号照合 失敗: ' + e.message); return { ok: false, found, cand }; }
+      for (const no of nos) {
+        const ex = hits[no.toLowerCase()] || [], titles = [...new Set(ex.map(h => h.title))];
+        if (titles.length === 1) { found[no] = titles[0]; continue; }
+        const cs = [...ex, ...wsVariants(no).flatMap(v => hits[v] || [])];
+        if (cs.length) cand[no] = cs.filter((h, i) => cs.findIndex(x => x.title === h.title && x.set === h.set) === i).slice(0, 3);
+      }
+      return { ok: true, found, cand };
+    };
     let last = null; // 最後に取り込んだデッキ（再取り込み用）
     const doImport = async (text, meta, out) => {
       if (!onDeck) throw new Error('untap のデッキ編集画面（Decks → デッキを開いた画面）で実行してください');
@@ -862,10 +898,27 @@
       if (game && g2 && game !== g2) throw new Error(`このデッキは${UT_NAMES[game]}ですが、取り込もうとしたのは${UT_NAMES[g2]}のデッキのようです。同じゲームのデッキ画面で実行してください`);
       out.innerHTML = '取り込み中…';
       const g = game || g2;
-      let risky = [];
-      if (g === 'ws') { const names = await wsNamesGet(); text = wsApply(text, names); risky = wsRisky(text, names); }
+      let risky = [], look = null;
+      if (g === 'ws') {
+        const names = await wsNamesGet(); text = wsApply(text, names);
+        const miss = [...new Set([...text.matchAll(/^\d+ .+? \(([a-z0-9]+\/[a-z0-9]+-[a-z0-9]+)\)$/gim)].map(m => m[1].toUpperCase()).filter(no => !names[no]))];
+        if (miss.length) {
+          out.innerHTML = `untap で ${miss.length} 種類を番号から探しています…`;
+          look = await wsLookup(miss);
+          if (Object.keys(look.found).length) { const d = wsDict(); for (const no in look.found) { names[no] = look.found[no]; d[no] = look.found[no]; } wsSave(d); text = wsApply(text, names); }
+          log('番号照合: 探した' + miss.length + ' 見つかった' + Object.keys(look.found).length + ' 候補' + Object.keys(look.cand).length + (look.ok ? '' : '（検索できず）'));
+        }
+        risky = wsRisky(text, names);
+      }
       const res = await autoImport(text), failed = res.failed;
       const chk = res.all ? [] : risky.filter(l => !failed.includes(l));
+      const noOf = l => ((l.match(/\(([^)]+)\)\s*$/) || [])[1] || '').toUpperCase();
+      const ctx = { code, work: location.href };
+      if (look) {
+        const nFound = Object.keys(look.found).length, nCand = failed.filter(l => look.cand[noOf(l)]).length;
+        ctx.check = look.ok ? `済み（untap で番号照合。見つかった ${nFound} ／ 候補あり ${nCand} ／ 無し ${failed.length - nCand}）` : 'できませんでした（untap の検索が使えませんでした）';
+        ctx.cand = no => (look.cand[no] || []).map(h => `${h.title}（登録番号 ${h.set}）`).join(' / ');
+      }
       last = { text, meta };
       if (panel.querySelector('[data-setname]').checked) setName(meta.title);
       record(text, meta);
@@ -873,8 +926,10 @@
       out.innerHTML = (res.all
         ? `<div style="color:#ffb454">1枚も取り込めませんでした（untap に一致するカードがありません）。下のカードを登録してもらうと取り込めるようになります。</div>`
         : `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>` + countCheck(text, g)) +
+        (look && Object.keys(look.found).length ? `<div data-found style="color:#9be29b;margin-top:4px">untap で番号から ${Object.keys(look.found).length} 種類見つけて、untap の英語名で取り込みました。</div>` : '') +
+        (look && !look.ok ? `<div style="opacity:.8;margin-top:4px">（untap の検索が使えなかったので、番号からの照合はしていません）</div>` : '') +
         (failed.length ? `<div style="color:#ffb454;margin-top:4px">取り込めなかったカード ${failed.length} 行（名前を押すと調べるページが開きます）:<br>` +
-          failed.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '') +
+          failed.map(l => { const L = LOOK[g]; const c = ctx.cand && ctx.cand(noOf(l)); return (L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l)) + (c ? `<div style="color:#ffd27a;font-size:11px;margin-left:10px">似た番号で登録あり（同じカードか登録担当が確認）：${esc(c)}</div>` : ''); }).join('<br>') + `</div>` : '') +
         (chk.length ? `<div data-chk style="color:#ffd27a;margin-top:6px;padding:6px;border:1px solid #806020;border-radius:6px;background:#2a2410">⚠ 次のカードは、<b>名前が同じ別のカード</b>（英語版の別のカード）が入ったかもしれません。untap のデッキで絵柄を確認して、違ったら「照合・登録を頼む」を押してください。<br>` +
           chk.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffd27a;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '') +
         (failed.length || chk.length ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px">${failed.length ? '未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。' : '確認したいカードは、untap にあるか調べてもらえます。'}` +
@@ -884,8 +939,8 @@
           `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '');
       const rb = out.querySelector('[data-req]'), rs = out.querySelector('[data-reqsend]'), rn = out.querySelector('[data-reqname]');
       if (rn) rn.oninput = () => { try { localStorage.setItem(REQ_NAME_KEY, rn.value.trim()); } catch (e) {} };
-      if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, g, false, chk, { code, work: location.href })); out.querySelector('.c2u-req-out').textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
-      if (rs) rs.onclick = () => sendReq(failed, meta, g, out.querySelector('.c2u-req-out'), chk, { code, work: location.href }).catch(e => { out.querySelector('.c2u-req-out').innerHTML = errHtml(e); });
+      if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, g, false, chk, ctx)); out.querySelector('.c2u-req-out').textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
+      if (rs) rs.onclick = () => sendReq(failed, meta, g, out.querySelector('.c2u-req-out'), chk, ctx).catch(e => { out.querySelector('.c2u-req-out').innerHTML = errHtml(e); });
       renderHist();
       return failed;
     };
@@ -1077,7 +1132,7 @@
     log('開始: ' + location.hostname);
     const decks = await site();
     log('デッキ ' + decks.length + ' 件: ' + decks.map(d => d.title + '（' + d.sub + '）').join(' / ').slice(0, 400));
-    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→ untap に登録済みか確認（未登録は照合・登録の依頼）→「untap用にコピー」→ untap に取り込む' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
+    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→「untap用にコピー」→ untap で取り込む（英語名データに無いカードは番号で探します）→ 入らなかったカードだけ依頼' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
     for (const d of decks) {
       const box = document.createElement('div');
       box.style.cssText = 'border:1px solid #3a3d44;border-radius:8px;padding:8px;margin-bottom:8px';

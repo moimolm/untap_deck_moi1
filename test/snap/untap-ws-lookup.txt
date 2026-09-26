@@ -1,0 +1,31 @@
+=== 問い合わせ ===
+card-search ["isc/s81-036","isc-s81-036","iscs81-036","isc/s81-36","isc-s81-36","iscs81-36","isc/s81-027","isc-s81-027","iscs81-027","isc/s81-27","isc-s81-27","iscs81-27","isc/s81-099","isc-s81-099","iscs81-099","isc/s81-99","isc-s81-99","iscs81-99"]
+=== 貼った内容 ===
+//deck-1
+3 chyotto ageru- Izumi Mei (isc/s81-036)
+2 オ♡フ♡レ♡コ 黛冬優子 (isc/s81-027)
+4 謎のカード (isc/s81-099)
+
+//c2u あさひ軸ストレイ | 優勝 | https://ws-tcg.com/deckrecipe/2/
+=== 表示 ===
+取り込みました（デッキ名も入れました）。確認して、untap 右上の「Save」を押してください。
+枚数が合いません：デッキ 9/50 ✗（デッキは50枚のはず）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。
+untap で番号から 1 種類見つけて、untap の英語名で取り込みました。
+取り込めなかったカード 2 行（名前を押すと調べるページが開きます）:
+2 オ♡フ♡レ♡コ 黛冬優子 (isc/s81-027)
+似た番号で登録あり（同じカードか登録担当が確認）：Off Record Fuyuko（登録番号 isc/s81-27）
+
+4 謎のカード (isc/s81-099)
+未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。
+照合・登録を頼む
+依頼内容をコピー
+コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください
+=== 依頼内容 ===
+【untap 照合・登録の依頼】
+ゲーム: ヴァイス（WSTCG）
+デッキ: あさひ軸ストレイ | https://ws-tcg.com/deckrecipe/2/
+untap の作業用デッキ: https://untap.in/deck/ws1
+照合: 済み（untap で番号照合。見つかった 1 ／ 候補あり 1 ／ 無し 1）
+未登録カード（2 行）:
+- ISC/S81-027 | オ♡フ♡レ♡コ 黛冬優子 | 2枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/i/isc_s81/isc_s81_027.png | 候補: Off Record Fuyuko（登録番号 isc/s81-27）
+- ISC/S81-099 | 謎のカード | 4枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/i/isc_s81/isc_s81_099.png

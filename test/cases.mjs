@@ -95,6 +95,11 @@ function step3() {
   document.getElementById('addc').onclick = () => { window.__added = true; }; }
 window.__form = () => { const g = id => { const e = document.getElementById(id); return e ? e.value : null; }; return { mode, image: window.__img, title: g('f-title'), id: g('f-id'), printType: g('f-pt'), orientation: g('f-or'), front: g('f-front') }; };
 </script>`;
+// untap の内部検索（card-search の sets）を真似した版。番号 → 登録済みカード
+const UNTAP_WS_API = UNTAP_WS.replace("const DB = [", "const DB = [{ name: 'chyotto ageru- Izumi Mei', sets: ['isc/s81-036'] }, ").replace('</script>', `
+const REG = [{ title: 'chyotto ageru- Izumi Mei', sets: [{ set: 'isc/s81-036', added_by_username: 'someone' }] }, { title: 'Off Record Fuyuko', sets: [{ set: 'isc/s81-27', added_by_username: 'other' }] }];
+document.body.__vue__ = { $root: { $api: { send: async (name, p) => { window.__sent = (window.__sent || []).concat([name + ' ' + JSON.stringify(p.sets)]); return name === 'card-search' ? { results: REG.filter(c => c.sets.some(x => p.sets.some(q => x.set.startsWith(q)))) } : { results: [] }; } } } };
+</script>`);
 
 // ---------- ケース ----------
 export default [
@@ -215,6 +220,7 @@ export default [
       await p.click('[data-a="copy"]'); await p.waitForTimeout(200);
       await p.evaluate(() => { const oc = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.target === '_blank') window.__opened = this.href; else oc.call(this); }; });
       await p.evaluate(() => { window.__deck = window.__clip; });
+      await p.click('#c2u-panel details summary');
       await p.fill('[data-reqname]', 'はなこ');
       await p.click('[data-reqsend]'); await p.waitForTimeout(200);
       await p.click('[data-req]'); await p.waitForTimeout(200);
@@ -276,6 +282,24 @@ export default [
       await p.click('[data-req]'); await p.waitForTimeout(200);
     },
     result: async p => [
+      '=== 貼った内容 ===', await p.evaluate(() => window.__imported),
+      '=== 表示 ===', await p.innerText('.c2u-ut-out'),
+      '=== 依頼内容 ===', await p.evaluate(() => window.__clip),
+    ].join('\n'),
+  },
+  {
+    name: 'untap-ws-lookup', url: 'https://untap.in/deck/ws1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: {} }) },
+    clipboard: '//deck-1\n3 ちょっとあげる～ 和泉愛依 (isc/s81-036)\n2 オ♡フ♡レ♡コ 黛冬優子 (isc/s81-027)\n4 謎のカード (isc/s81-099)\n\n//c2u あさひ軸ストレイ | 優勝 | https://ws-tcg.com/deckrecipe/2/',
+    html: UNTAP_WS_API,
+    steps: async p => {
+      await p.waitForSelector('[data-clip]');
+      await p.click('[data-clip]');
+      await p.waitForSelector('[data-req]', { timeout: 15000 });
+      await p.click('[data-req]'); await p.waitForTimeout(200);
+    },
+    result: async p => [
+      '=== 問い合わせ ===', (await p.evaluate(() => window.__sent || [])).join('\n'),
       '=== 貼った内容 ===', await p.evaluate(() => window.__imported),
       '=== 表示 ===', await p.innerText('.c2u-ut-out'),
       '=== 依頼内容 ===', await p.evaluate(() => window.__clip),

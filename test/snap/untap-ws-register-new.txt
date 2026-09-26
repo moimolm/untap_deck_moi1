@@ -9,6 +9,7 @@
 ゲーム: ヴァイス（WSTCG）
 デッキ: 学マス | https://ws-tcg.com/deckrecipe/1/
 untap の作業用デッキ: https://untap.in/deck/ws1
+照合: できませんでした（untap の検索が使えませんでした）
 未登録カード（1 行）:
 - GIM/W124-032 | かぜったい追いついてやる | 2枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/g/gim_w124/gim_w124_032.png
 === フォームを開いた URL（依頼内容を戻したもの） ===
@@ -18,6 +19,7 @@ https://docs.google.com/forms/d/e/1FAIpQLSfBI-qi51bINoY5ou9_KaH1jOK5RMtb8Yp7GXHr
 ゲーム: ヴァイス（WSTCG）
 デッキ: 学マス | https://ws-tcg.com/deckrecipe/1/
 untap の作業用デッキ: https://untap.in/deck/ws1
+照合: できませんでした（untap の検索が使えませんでした）
 未登録カード（1 行）:
 - GIM/W124-032 | かぜったい追いついてやる | 2枚
 === 送ったあとの表示 ===
