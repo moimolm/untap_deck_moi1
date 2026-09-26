@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v22';
+  const C2U_VER = 'v23';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -695,7 +695,7 @@
     log('枚数チェック(' + game + '): ' + parts.join(' ') + (bad.length ? ' / NG' : ''));
     return bad.length
       ? `<div style="color:#ffb454;font-size:12px;margin-top:4px">枚数が合いません：${esc(parts.join('・'))}（${esc(bad.join('、'))}）。ページの読み取り漏れか、そういう構成のデッキです。おかしいと思ったらパネル下の「報告用にコピー」を。</div>`
-      : `<div style="color:#9be29b;font-size:12px;margin-top:4px">枚数チェック：${esc(parts.join('・'))}</div>`;
+      : `<div style="color:#9be29b;font-size:12px;margin-top:4px">元のデッキの枚数チェック：${esc(parts.join('・'))}</div>`;
   };
   const gameOf = b => Object.keys(LOOK).find(k => LOOK[k] === b.look);
 
@@ -818,7 +818,7 @@
       set.call(titleIn, name.slice(0, 80)); titleIn.dispatchEvent(new Event('input', { bubbles: true })); titleIn.dispatchEvent(new Event('change', { bubbles: true }));
     };
     const autoImport = async text => {
-      const clr = byText('a,button,span,div', /^Clear Failed$/); if (clr) { clr.click(); await w(200); }
+      const clr = byText('a,button,span,div', /^Clear Failed$/i); if (clr) { clr.click(); await w(200); }
       const tab = byText('button', /^Import \/ Export$/); if (tab) { tab.click(); await w(400); }
       const pb = byText('button', /^Paste Deck$/); if (!pb) throw new Error('untap の「Paste Deck」ボタンが見つかりません（デッキ編集画面で実行してください）');
       pb.click();
@@ -837,9 +837,22 @@
         const cancel = byText('button', /^Cancel$/); if (cancel) { cancel.click(); await w(300); }
         return { all: true, failed: text.split('\n').map(s => s.trim()).filter(s => /^\d+ /.test(s)) };
       }
-      const fb = [...document.querySelectorAll('*')].find(e => e.children.length && /^Cards Failed Import/.test(e.textContent.trim()) && e.offsetParent !== null && e.textContent.length < 3000);
-      const failed = fb ? fb.innerText.split('\n').map(s => s.trim()).filter(s => /^\d+ /.test(s) && !/^\/\/c2u/.test(s)) : [];
-      return { all: false, failed };
+      // 取り込めなかったカード：2026-09 から untap は `.failed-imports > span`（「2 カード名」だけで番号が消える）。古い形（Cards Failed Import）も読む
+      let raw = [...document.querySelectorAll('.failed-imports > span')].filter(e => e.offsetParent !== null).map(e => e.textContent.replace(/\s+/g, ' ').trim());
+      if (!raw.length) {
+        const fb = [...document.querySelectorAll('*')].find(e => e.children.length && /^Cards Failed Import/i.test(e.textContent.trim()) && e.offsetParent !== null && e.textContent.length < 3000);
+        raw = fb ? fb.innerText.split('\n').map(s => s.trim()) : [];
+      }
+      raw = raw.filter(s => /^\d+ /.test(s) && !/^\/\/c2u/.test(s));
+      // 貼った行に戻す（番号を付け直す）。同じ行を二度使わない
+      const src = text.split('\n').map(s => s.trim()).filter(s => /^\d+ /.test(s)), used = new Set();
+      const norm = x => x.replace(/\s*[\(\[][^\)\]]*[\)\]]\s*$/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const failed = raw.map(r => { const i = src.findIndex((l, k) => !used.has(k) && (l === r || norm(l) === norm(r))); if (i < 0) return r; used.add(i); return src[i]; });
+      // 念のため枚数でも確かめる（「25 Cards - 8 Unique」）
+      const want = src.reduce((a, l) => a + Number(l.match(/^\d+/)[0]), 0);
+      const hd = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && /^\d+ Cards - \d+ Unique/.test(e.textContent.trim()) && e.offsetParent !== null);
+      const got = hd ? Number(hd.textContent.trim().match(/^\d+/)[0]) : null;
+      return { all: false, failed, want, got };
     };
     const record = (text, meta) => {
       const h = histGet().filter(x => x.text !== text);
@@ -925,7 +938,10 @@
       log('untap取り込み: ' + meta.title + ' 失敗' + failed.length);
       out.innerHTML = (res.all
         ? `<div style="color:#ffb454">1枚も取り込めませんでした（untap に一致するカードがありません）。下のカードを登録してもらうと取り込めるようになります。</div>`
-        : `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>` + countCheck(text, g)) +
+        : (failed.length || (res.got != null && res.got < res.want)
+          ? `<div style="color:#ffb454">取り込みましたが、<b>入らなかったカードがあります</b>（下の一覧）。このまま「Save」してもかまいませんが、そのカードはデッキに入っていません。</div>`
+          : `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>`) + countCheck(text, g)) +
+        (!res.all && res.got != null && res.got < res.want - failed.reduce((t, l) => t + (Number((l.match(/^\d+/) || [0])[0]) || 0), 0) ? `<div data-short style="color:#ff9b9b;margin-top:4px">⚠ untap のデッキは ${res.got} 枚です（貼ったのは ${res.want} 枚）。下の一覧のほかにも入っていないカードがあります。untap 左側の「Cards failed import」を見てください。</div>` : '') +
         (look && Object.keys(look.found).length ? `<div data-found style="color:#9be29b;margin-top:4px">untap で番号から ${Object.keys(look.found).length} 種類見つけて、untap の英語名で取り込みました。</div>` : '') +
         (look && !look.ok ? `<div style="opacity:.8;margin-top:4px">（untap の検索が使えなかったので、番号からの照合はしていません）</div>` : '') +
         (failed.length ? `<div style="color:#ffb454;margin-top:4px">取り込めなかったカード ${failed.length} 行（名前を押すと調べるページが開きます）:<br>` +
@@ -1151,8 +1167,9 @@
       };
       if (d.ws) {
         btn.onclick = async () => {
+          if (btn.dataset.open) { info.innerHTML = ''; delete btn.dataset.open; btn.textContent = '開く'; return; }
           btn.textContent = '読み込み中…';
-          try { const rows = await d.load(); const remote = await wsRemote(); log('開く: ' + d.title + ' ' + rows.length + '種・GitHub辞書' + Object.keys(remote).length + '件'); wsEditor(info, rows, d.title, remote); btn.textContent = '開く'; }
+          try { const rows = await d.load(); const remote = await wsRemote(); log('開く: ' + d.title + ' ' + rows.length + '種・GitHub辞書' + Object.keys(remote).length + '件'); wsEditor(info, rows, d.title, remote); btn.dataset.open = '1'; btn.textContent = '閉じる'; }
           catch (e) { btn.textContent = '開く'; info.innerHTML = errHtml(e); }
         };
         body.appendChild(box);

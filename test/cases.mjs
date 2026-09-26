@@ -56,7 +56,7 @@ const VG_API = {
 // untap（ヴァイス）の見本：取り込み＋ Add Missing Card の画面（実物の表示文字・項目名をまねたもの）
 const UNTAP_WS = `<div class="block desktop-fill"><div class="input-style container"><div>WSTCG</div><div>Weiß Schwarz</div>
 <input class="deck-title-input" placeholder="Name ME!" value="test"><button>Save</button>
-<button>Import / Export</button><div id="ie"></div><div id="failed"></div><a href="javascript:void(0)" id="amc">Add Missing Card</a></div></div>
+<button>Import / Export</button><div id="ie"></div><div id="failed"></div><div id="hd"></div><a href="javascript:void(0)" id="amc">Add Missing Card</a></div></div>
 <div id="dlg"></div>
 <script>
 const DB = [{ name: 'Kotone Fujita, Started Being Cute', sets: ['gim/w124-t02'] }, { name: 'Shiny Days', sets: ['isc/s81-e099'] }];
@@ -67,7 +67,10 @@ function openDlg() { const d = document.createElement('div'); d.innerHTML = '<te
     const lines = v.split('\\n').filter(l => /^\\d+ /.test(l)), bad = lines.filter(l => !DB.some(c => l.includes(c.name)));
     if (lines.length && bad.length === lines.length) { const t = document.createElement('div'); t.textContent = 'No cards where imported, please check your input'; document.body.appendChild(t); return; }
     d.remove();
-    document.getElementById('failed').innerHTML = bad.length ? '<div>Cards Failed Import<br><span>Clear Failed</span>' + bad.map(l => '<div>' + l + '</div>').join('') + '</div>' : ''; }; }
+    const cnt = lines.filter(l => !bad.includes(l)).reduce((a, l) => a + Number(l.match(/^\\d+/)[0]), 0);
+    document.getElementById('hd').textContent = cnt + ' Cards - ' + (lines.length - bad.length) + ' Unique';
+    // 2026-09 の untap：見出しは小文字、失敗カードは .failed-imports > span（番号は消える）
+    document.getElementById('failed').innerHTML = bad.length ? '<label>Cards failed import <small><a href="javascript:void(0)">Clear Failed</a></small></label><div class="failed-imports">' + bad.map(l => '<span> ' + l.replace(/ \\([^)]*\\)$/, '') + ' <i class="add-missing"></i><i></i></span>').join('') + '</div>' : ''; }; }
 const dlg = document.getElementById('dlg'); let mode = '';
 const H = s => '<div><div>Add Missing Card</div>' + s + '</div>';
 document.getElementById('amc').onclick = () => { dlg.innerHTML = '<div>Please read <button id="und">I understand</button></div>'; document.getElementById('und').onclick = step1; };

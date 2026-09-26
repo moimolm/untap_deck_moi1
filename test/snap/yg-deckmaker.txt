@@ -8,4 +8,4 @@
 
 //c2u DECK MAKER のデッキ | メイン40・EX1・サイド0 | https://deck-maker.com/decks/new/
 === 表示 ===
-枚数チェック：メイン 40枚 ✓・EX 1枚 ✓
+元のデッキの枚数チェック：メイン 40枚 ✓・EX 1枚 ✓
