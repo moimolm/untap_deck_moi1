@@ -370,6 +370,19 @@ export default [
       <div class="card-item"><img src="https://ws-tcg.com/y.png" title="GU/WE46-39 : にっこりカフェの魔法使い"><span class="num">4</span></div>`,
     steps: async p => { await p.click('#c2u-body [data-qcopy]'); await p.waitForFunction(() => /コピーしました/.test(document.querySelector('#c2u-body .c2u-info').innerText), null, { timeout: 15000 }); },
   },
+  {
+    name: 'untap-ws-share', url: 'https://untap.in/deck/ws1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: {} }) },
+    clipboard: '//deck-1\n3 ちょっとあげる～ 和泉愛依 (isc/s81-036)\n\n//c2u あさひ軸ストレイ | 優勝 | https://ws-tcg.com/deckrecipe/2/',
+    html: UNTAP_WS_API,
+    steps: async p => {
+      await p.waitForSelector('[data-clip]'); await p.click('[data-clip]');
+      await p.waitForSelector('[data-reqsend]', { timeout: 15000 });
+      await p.fill('[data-reqname]', 'たろう');
+      await p.click('[data-req]'); await p.waitForTimeout(200);
+    },
+    result: async p => ['=== 表示 ===', await p.innerText('.c2u-ut-out'), '=== 共有の内容 ===', await p.evaluate(() => window.__clip)].join('\n'),
+  },
   ...['reprint', 'new'].map(kind => ({
     name: 'untap-ws-register-' + kind, url: 'https://untap.in/deck/ws1',
     api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: { 'GIM/W124-T02': 'Kotone Fujita, Started Being Cute' } }) },

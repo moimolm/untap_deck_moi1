@@ -35,3 +35,5 @@ untap の作業用デッキ: https://untap.in/deck/ws1
 未登録カード（2 行）:
 - ISC/S81-027 | オ♡フ♡レ♡コ 黛冬優子 | 2枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/i/isc_s81/isc_s81_027.png | 候補: Off Record Fuyuko（登録番号 isc/s81-27）
 - ISC/S81-099 | 謎のカード | 4枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/i/isc_s81/isc_s81_099.png
+番号照合で見つかった英語名（untap に同じ番号の登録が1つだけあったもの。登録不要・確認不要で ws-names.json に足してよい）:
+- ISC/S81-036 | ちょっとあげる～ 和泉愛依 | chyotto ageru- Izumi Mei
