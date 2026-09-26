@@ -9,14 +9,16 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v26';
+  const C2U_VER = 'v27';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
-  { const old = document.getElementById(ID); if (old && old.dataset.min && old.__restore) { old.__restore(); return; } old?.remove(); }
+  // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
+  { const old = document.getElementById(ID); if (old && old.dataset.min && old.__restore && old.dataset.ver === C2U_VER) { old.__restore(); return; } old?.remove(); }
 
   /* ---------- UI ---------- */
   const panel = document.createElement('div');
   panel.id = ID;
+  panel.dataset.ver = C2U_VER;
   panel.style.cssText =
     'position:fixed;top:12px;right:12px;z-index:2147483647;width:min(420px,calc(100vw - 24px));' +
     'max-height:calc(100vh - 24px);overflow:auto;background:#1b1d22;color:#e8e8e8;border:1px solid #444;' +
@@ -880,7 +882,7 @@
     const autoImport = async text => {
       const clr = byText('a,button,span,div', /^Clear Failed$/i); if (clr) { clr.click(); await w(200); }
       const tab = byText('button', /^Import \/ Export$/); if (tab) { tab.click(); await w(400); }
-      const pb = byText('button', /^Paste Deck$/); if (!pb) throw new Error('untap の「Paste Deck」ボタンが見つかりません（デッキ編集画面で実行してください）');
+      const pb = byText('button', /^Paste Deck$/); if (!pb) throw new Error(utConnected() === false || !document.querySelector('.deck-title-input') ? OFFLINE : 'untap の「Paste Deck」ボタンが見つかりません（デッキ編集画面で実行してください）');
       pb.click();
       let ta = null; for (let i = 0; i < 20 && !ta; i++) { await w(150); ta = document.querySelector('textarea[placeholder="Paste your cards here"]'); }
       if (!ta) throw new Error('貼り付け欄が開きませんでした');
@@ -937,6 +939,9 @@
     // ・区切りや 0 の有無が違う登録は「候補」として依頼に書き添えるだけ（別のカードを黙って入れないため）
     // ※ untap の非公式な仕組み。使えないときは ok:false で今まで通りの流れに戻る
     const utApi = () => { try { const e = [...document.querySelectorAll('*')].find(x => x.__vue__); const a = e && e.__vue__.$root && e.__vue__.$root.$api; return a && typeof a.send === 'function' ? a : null; } catch (e) { return null; } };
+    // untap との接続（放っておくと切れて、ロゴと「Login」の読み込み画面になる）。分からないときは null
+    const utConnected = () => { try { const e = [...document.querySelectorAll('*')].find(x => x.__vue__); const a = e && e.__vue__.$root && e.__vue__.$root.$api; return a && typeof a.socketConnected === 'boolean' ? a.socketConnected : null; } catch (e) { return null; } };
+    const OFFLINE = 'untap との接続が切れています（しばらく放っておくと切れます）。untap のページを再読み込み（F5）して、デッキの画面が出てからもう一度押してください。';
     const wsVariants = no => {
       const m = no.toLowerCase().match(/^([a-z0-9]+)\/([a-z0-9]+)-([a-z]*)(\d+)([a-z]*)$/); if (!m) return [];
       const [, a, b, p, d, x] = m, nums = [...new Set([d, String(Number(d)), String(Number(d)).padStart(3, '0')])];
@@ -945,13 +950,13 @@
     };
     const wsLookup = async nos => {
       const api = utApi(), found = {}, cand = {};
-      if (!api || !nos.length) return { ok: !!api, found, cand };
+      if (!api || !nos.length || utConnected() === false) return { ok: !!api && utConnected() !== false, found, cand };
       const want = {}; // 問い合わせる番号 → 元の番号
       for (const no of nos) { want[no.toLowerCase()] = no; for (const v of wsVariants(no)) if (!want[v]) want[v] = no; }
       const keys = Object.keys(want), hits = {};
       try {
         for (let i = 0; i < keys.length; i += 30) {
-          const r = await Promise.race([api.send('card-search', { ccg: 'wstcg', sets: keys.slice(i, i + 30) }), w(10000).then(() => { throw new Error('timeout'); })]);
+          const r = await Promise.race([api.send('card-search', { ccg: 'wstcg', sets: keys.slice(i, i + 30) }), w(6000).then(() => { throw new Error('timeout'); })]);
           for (const c of (r && r.results) || []) for (const st of c.sets || []) {
             const k = String(st.set || '').toLowerCase(); if (!(k in want)) continue;
             (hits[k] = hits[k] || []).push({ title: c.title, set: st.set, by: st.added_by_username || '', img: st.front_image || '', usage: Number(st.usage || c.usage || 0) || 0 });
@@ -970,6 +975,7 @@
     let last = null; // 最後に取り込んだデッキ（再取り込み用）
     let reports = {}; // 候補から選んだ英語名（番号 → {no, jp, qty, title, set}）。同じデッキを取り込み直しても残す
     const doImport = async (text, meta, out) => {
+      if (utConnected() === false) throw new Error(OFFLINE);
       if (!onDeck) throw new Error('untap のデッキ編集画面（Decks → デッキを開いた画面）で実行してください');
       const g2 = guessGame(text);
       if (game && g2 && game !== g2) throw new Error(`このデッキは${UT_NAMES[game]}ですが、取り込もうとしたのは${UT_NAMES[g2]}のデッキのようです。同じゲームのデッキ画面で実行してください`);

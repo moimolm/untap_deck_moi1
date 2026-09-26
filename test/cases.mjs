@@ -351,6 +351,14 @@ export default [
       '=== 依頼内容 ===', await p.evaluate(() => window.__clip),
     ].join('\n'),
   },
+  {
+    name: 'untap-offline', url: 'https://untap.in/deck/ws1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: {} }) },
+    clipboard: '//deck-1\n3 ちょっとあげる～ 和泉愛依 (isc/s81-036)\n\n//c2u テスト | x | https://ws-tcg.com/deckrecipe/2/',
+    html: UNTAP_WS_API.replace('$api: { send:', '$api: { socketConnected: false, send:'),
+    steps: async p => { await p.waitForSelector('[data-clip]'); await p.click('[data-clip]'); await p.waitForTimeout(1500); },
+    result: async p => ['=== 表示 ===', await p.innerText('.c2u-ut-out'), '=== 貼り付けたか ===', String(!!(await p.evaluate(() => window.__imported)))].join('\n'),
+  },
   ...['reprint', 'new'].map(kind => ({
     name: 'untap-ws-register-' + kind, url: 'https://untap.in/deck/ws1',
     api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: { 'GIM/W124-T02': 'Kotone Fujita, Started Being Cute' } }) },
