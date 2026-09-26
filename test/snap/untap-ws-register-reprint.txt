@@ -45,4 +45,3 @@ I Will Definitely Catch Up
 GIM/W124-032
 フォームに入力
 登録後にもう一度取り込む
-英語名データを書き出す

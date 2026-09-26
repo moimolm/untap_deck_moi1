@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v29';
+  const C2U_VER = 'v30';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -1210,8 +1210,7 @@
         box.innerHTML = (msg ? `<div style="margin-bottom:4px">${msg}</div>` : '') + cards.map((c, i) =>
           `<div style="border-top:1px solid #333;padding:4px 0;display:flex;gap:6px;align-items:center"><div style="flex:1"><div>${esc(c.name)}</div><div style="opacity:.6">${esc(c.no)}${c.done ? ' · <span style="color:#9be29b">' + (c.done === 'reprint' ? '版を追加' : '新規') + 'で入力済み</span>' : ''}</div></div>` +
           `<button data-fill="${i}" style="all:unset;cursor:pointer;background:${c.done ? '#333' : '#2f6fed'};color:#fff;border-radius:6px;padding:3px 10px;white-space:nowrap">フォームに入力</button></div>`).join('') +
-          (cards.length ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button data-regre style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">登録後にもう一度取り込む</button>` +
-            `<button data-regexp style="all:unset;cursor:pointer;border:1px solid #555;border-radius:6px;padding:3px 10px">英語名データを書き出す</button></div>` : '');
+          (cards.length ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button data-regre style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">登録後にもう一度取り込む</button>` + `</div>` : ''); // ws-names.json はルーティンが自動でコミットするので、手で書き出すボタンは置かない（v30〜）
       };
       body.querySelector('[data-regload]').onclick = () => {
         try { cards = parseCards(body.querySelector('[data-regin]').value); render(`${cards.length} 枚を読み込みました。上から順に「フォームに入力」→ 中身を確認して untap の「Add Card」を押してください。`); }
@@ -1225,12 +1224,6 @@
             if (!last) throw new Error('先に「コピーしたデッキを取り込む」でデッキを取り込んでください');
             wsNames = null; const failed = await doImport(last.text, last.meta, out);
             render(failed.length ? `<span style="color:#ffb454">まだ ${failed.length} 行取り込めません（上の一覧）。</span>` : '<span style="color:#9be29b">全部取り込めました。</span>「Save」を押してください。');
-          } else if (ev.target.closest('[data-regexp]')) {
-            const all = await wsNamesGet(), keys = Object.keys(all).sort();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'untapへ転送', kind: 'ws-names', saved: new Date().toISOString(), names: Object.fromEntries(keys.map(k => [k, all[k]])) }, null, 1)], { type: 'application/json' }));
-            a.download = 'ws-names.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-            render(`英語名 ${keys.length} 件を ws-names.json に書き出しました。GitHub に上書きアップロードすると、友人の環境でも自動で使われます。`);
           }
         } catch (e) { render(errHtml(e)); }
       });
