@@ -332,6 +332,7 @@ export default [
       const st = () => p.evaluate(() => { const pn = document.getElementById('c2u-panel'), r = pn.getBoundingClientRect(), m = document.getElementById('c2u-min').getBoundingClientRect(); return `min=${!!pn.dataset.min} top=${pn.style.top} right=${pn.style.right || '-'} left=${pn.style.left || '-'} 本体=${document.querySelector('#c2u-body').style.display || '表示'} 下部=${[...pn.children].pop().style.display || '表示'} 依頼ボタン=${!!document.querySelector('[data-reqsend]')} –の位置=右端から${Math.round(innerWidth - m.right)}・左端から${Math.round(m.left)}・上から${Math.round(m.top - r.top)}（帯の上端から）`; });
       const log = [];
       log.push('開いた状態: ' + await st());
+      log.push('中身をスクロールしても見出しが残る: ' + await p.evaluate(() => { const pn = document.getElementById('c2u-panel'); pn.style.maxHeight = '300px'; pn.scrollTop = 250; const d = Math.round(document.getElementById('c2u-min').getBoundingClientRect().top - pn.getBoundingClientRect().top); pn.scrollTop = 0; pn.style.maxHeight = 'calc(100vh - 24px)'; return 'スクロール量=' + 250 + ' –の位置=帯の上端から' + d; }));
       await p.click('#c2u-min'); log.push('小さくした: ' + await st());
       const b = await p.locator('#c2u-title').boundingBox();
       await p.mouse.move(b.x + 10, b.y + 5); await p.mouse.down(); await p.mouse.move(b.x + 10, b.y + 205, { steps: 5 }); await p.mouse.up();

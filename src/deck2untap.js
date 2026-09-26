@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v28';
+  const C2U_VER = 'v29';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -48,11 +48,14 @@
     panel.style.top = (panel.dataset.min ? minTop() : 12) + 'px';
   };
   const rest = () => [...panel.children].filter(e => e !== head);
+  // 見出し（– ⇆ ×）はスクロールしても上に残す。パネルの余白ぶん外に広げて、下の中身が透けないように背景を付ける
+  const stickHead = () => Object.assign(head.style, { position: 'sticky', top: '-12px', zIndex: '3', margin: '-12px -12px 8px', padding: '12px 12px 6px', background: '#1b1d22', borderBottom: '1px solid #333' });
+  stickHead();
   const minimize = () => {
     panel.dataset.min = '1'; rest().forEach(e => { e.dataset.c2uHid = e.style.display; e.style.display = 'none'; });
     Object.assign(panel.style, { width: 'auto', overflow: 'hidden', padding: '12px 12px 8px' }); // 上と横は開いたときと同じ余白 → ボタンの位置がずれない
     mb.textContent = '▢'; mb.title = '元の大きさに戻す';
-    head.style.marginBottom = '0'; head.style.gap = '12px';
+    Object.assign(head.style, { position: 'static', margin: '0', padding: '0', background: '', borderBottom: '' }); head.style.gap = '12px';
     ttl.style.cursor = 'ns-resize'; ttl.title = '上下にドラッグで移動・ダブルクリックで戻す';
     place();
   };
@@ -60,7 +63,7 @@
     delete panel.dataset.min; rest().forEach(e => { e.style.display = e.dataset.c2uHid || ''; delete e.dataset.c2uHid; });
     Object.assign(panel.style, { width: 'min(420px,calc(100vw - 24px))', overflow: 'auto', padding: '12px' });
     mb.textContent = '–'; mb.title = '小さくする（中身はそのまま）';
-    head.style.marginBottom = '8px'; head.style.gap = '8px';
+    stickHead(); head.style.gap = '8px';
     ttl.style.cursor = 'default'; ttl.title = '';
     place();
   };
