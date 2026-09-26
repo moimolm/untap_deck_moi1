@@ -327,11 +327,20 @@ export default [
       await p.click('[data-repick]');
       await p.waitForFunction(() => /候補から選んだ/.test(document.querySelector('.c2u-ut-out').innerText), null, { timeout: 15000 });
       await p.click('[data-req]'); await p.waitForTimeout(200);
-      // 最小化 → 中身が残ったまま戻せるか
-      await p.click('#c2u-min');
-      await p.evaluate(() => { const b = document.querySelector('#c2u-body'); window.__min = [b.style.display, document.getElementById('c2u-panel').style.bottom, !!document.querySelector('[data-reqsend]')].join(' / '); });
-      await p.click('#c2u-min');
-      await p.evaluate(() => { const b = document.querySelector('#c2u-body'); window.__min += ' → ' + [b.style.display || '表示', document.getElementById('c2u-panel').style.top].join(' / '); });
+      // 最小化 → 中身が残ったまま戻せるか・右上に残るか・上下に動かした位置を覚えるか・左側では左上か
+      const st = () => p.evaluate(() => { const pn = document.getElementById('c2u-panel'), r = pn.getBoundingClientRect(), m = document.getElementById('c2u-min').getBoundingClientRect(); return `min=${!!pn.dataset.min} top=${pn.style.top} right=${pn.style.right || '-'} left=${pn.style.left || '-'} 本体=${document.querySelector('#c2u-body').style.display || '表示'} 下部=${[...pn.children].pop().style.display || '表示'} 依頼ボタン=${!!document.querySelector('[data-reqsend]')} –の位置=右端から${Math.round(innerWidth - m.right)}・左端から${Math.round(m.left)}・上から${Math.round(m.top - r.top)}（帯の上端から）`; });
+      const log = [];
+      log.push('開いた状態: ' + await st());
+      await p.click('#c2u-min'); log.push('小さくした: ' + await st());
+      const b = await p.locator('#c2u-title').boundingBox();
+      await p.mouse.move(b.x + 10, b.y + 5); await p.mouse.down(); await p.mouse.move(b.x + 10, b.y + 205, { steps: 5 }); await p.mouse.up();
+      log.push('200px 下へ: ' + await st());
+      await p.click('#c2u-min'); log.push('戻した: ' + await st());
+      await p.click('#c2u-min'); log.push('もう一度小さく（位置を覚えている）: ' + await st());
+      await p.click('#c2u-min'); await p.click('#c2u-side'); log.push('左へ移した: ' + await st());
+      await p.click('#c2u-min'); log.push('左で小さく: ' + await st());
+      await p.click('#c2u-min'); await p.click('#c2u-side');
+      await p.evaluate(l => { window.__min = l.join('\n'); }, log);
     },
     result: async p => [
       '=== 最小化 → 戻す ===', await p.evaluate(() => window.__min),

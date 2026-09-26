@@ -1,5 +1,11 @@
 === 最小化 → 戻す ===
-none / 12px / true → 表示 / 12px
+開いた状態: min=false top=12px right=12px left=- 本体=表示 下部=表示 依頼ボタン=true –の位置=右端から54・左端から1205・上から13（帯の上端から）
+小さくした: min=true top=12px right=12px left=- 本体=none 下部=none 依頼ボタン=true –の位置=右端から54・左端から1197・上から13（帯の上端から）
+200px 下へ: min=true top=212px right=12px left=- 本体=none 下部=none 依頼ボタン=true –の位置=右端から54・左端から1197・上から13（帯の上端から）
+戻した: min=false top=12px right=12px left=- 本体=表示 下部=表示 依頼ボタン=true –の位置=右端から54・左端から1205・上から13（帯の上端から）
+もう一度小さく（位置を覚えている）: min=true top=212px right=12px left=- 本体=none 下部=none 依頼ボタン=true –の位置=右端から54・左端から1197・上から13（帯の上端から）
+左へ移した: min=false top=12px right=- left=12px 本体=表示 下部=表示 依頼ボタン=true –の位置=右端から1205・左端から54・上から13（帯の上端から）
+左で小さく: min=true top=212px right=- left=12px 本体=none 下部=none 依頼ボタン=true –の位置=右端から1197・左端から54・上から13（帯の上端から）
 === 画像を押すと拡大 ===
 true
 === 選ぶ前の表示 ===

@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v25';
+  const C2U_VER = 'v26';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   { const old = document.getElementById(ID); if (old && old.dataset.min && old.__restore) { old.__restore(); return; } old?.remove(); }
@@ -22,7 +22,7 @@
     'max-height:calc(100vh - 24px);overflow:auto;background:#1b1d22;color:#e8e8e8;border:1px solid #444;' +
     'border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);font:13px/1.5 system-ui,sans-serif;padding:12px;text-align:left';
   panel.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<div id="c2u-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">' +
     '<b id="c2u-title" style="cursor:default">untapへ転送 <span style="opacity:.5;font-weight:400;font-size:11px">' + C2U_VER + '</span></b><span style="display:flex;gap:2px;align-items:center">' +
     '<button id="c2u-side" title="パネルを反対側へ移す" style="all:unset;cursor:pointer;padding:0 6px;font-size:15px">⇆</button>' +
     '<button id="c2u-min" title="小さくする（中身はそのまま）" style="all:unset;cursor:pointer;padding:0 6px;font-size:18px">–</button>' +
@@ -30,26 +30,51 @@
     '<div id="c2u-body">読み込み中…</div>';
   document.body.appendChild(panel);
   panel.querySelector('#c2u-x').onclick = () => panel.remove();
-  // 最小化：右下（または左下）の小さな帯にする。中身は消さないので、戻すと続きから使える
-  let side = 'right';
-  const place = () => { panel.style.left = side === 'left' ? '12px' : ''; panel.style.right = side === 'right' ? '12px' : ''; };
-  const bodyEl = () => panel.querySelector('#c2u-body');
+  // 最小化：いま寄せている側の上端に、見出しの帯だけ残す（右寄せなら右上、左寄せなら左上）
+  // ・ボタンは画面の端側に並べるので、小さくしても「–」と「▢」が同じ位置に来る。中身は消さないので続きから使える
+  // ・小さくした帯はタイトルをつかんで上下に動かせる。位置と左右はこのサイトのブラウザに覚える
+  const PREF = 'c2u-panel-pref-v1';
+  const pref = (() => { try { return JSON.parse(localStorage.getItem(PREF) || '{}') || {}; } catch (e) { return {}; } })();
+  const savePref = () => { try { localStorage.setItem(PREF, JSON.stringify(pref)); } catch (e) {} };
+  let side = pref.side === 'left' ? 'left' : 'right';
+  const head = panel.querySelector('#c2u-head'), ttl = panel.querySelector('#c2u-title'), mb = panel.querySelector('#c2u-min');
+  const minTop = () => Math.max(8, Math.min(window.innerHeight - 48, Number(pref.minTop) || 12));
+  const place = () => {
+    panel.style.left = side === 'left' ? '12px' : ''; panel.style.right = side === 'right' ? '12px' : '';
+    head.style.flexDirection = side === 'left' ? 'row-reverse' : 'row';
+    head.lastElementChild.style.flexDirection = side === 'left' ? 'row-reverse' : 'row';
+    panel.style.top = (panel.dataset.min ? minTop() : 12) + 'px';
+  };
+  const rest = () => [...panel.children].filter(e => e !== head);
   const minimize = () => {
-    panel.dataset.min = '1'; bodyEl().style.display = 'none';
-    Object.assign(panel.style, { top: '', bottom: '12px', width: 'auto', padding: '6px 10px' });
-    panel.querySelector('#c2u-min').textContent = '▢'; panel.querySelector('#c2u-min').title = '元の大きさに戻す';
-    panel.firstElementChild.style.marginBottom = '0';
+    panel.dataset.min = '1'; rest().forEach(e => { e.dataset.c2uHid = e.style.display; e.style.display = 'none'; });
+    Object.assign(panel.style, { width: 'auto', overflow: 'hidden', padding: '12px 12px 8px' }); // 上と横は開いたときと同じ余白 → ボタンの位置がずれない
+    mb.textContent = '▢'; mb.title = '元の大きさに戻す';
+    head.style.marginBottom = '0'; head.style.gap = '12px';
+    ttl.style.cursor = 'ns-resize'; ttl.title = '上下にドラッグで移動・ダブルクリックで戻す';
+    place();
   };
   const restore = () => {
-    delete panel.dataset.min; bodyEl().style.display = '';
-    Object.assign(panel.style, { top: '12px', bottom: '', width: 'min(420px,calc(100vw - 24px))', padding: '12px' });
-    panel.querySelector('#c2u-min').textContent = '–'; panel.querySelector('#c2u-min').title = '小さくする（中身はそのまま）';
-    panel.firstElementChild.style.marginBottom = '8px';
+    delete panel.dataset.min; rest().forEach(e => { e.style.display = e.dataset.c2uHid || ''; delete e.dataset.c2uHid; });
+    Object.assign(panel.style, { width: 'min(420px,calc(100vw - 24px))', overflow: 'auto', padding: '12px' });
+    mb.textContent = '–'; mb.title = '小さくする（中身はそのまま）';
+    head.style.marginBottom = '8px'; head.style.gap = '8px';
+    ttl.style.cursor = 'default'; ttl.title = '';
+    place();
   };
   panel.__restore = restore;
-  panel.querySelector('#c2u-min').onclick = () => (panel.dataset.min ? restore() : minimize());
-  panel.querySelector('#c2u-title').ondblclick = () => (panel.dataset.min ? restore() : minimize());
-  panel.querySelector('#c2u-side').onclick = () => { side = side === 'right' ? 'left' : 'right'; place(); };
+  mb.onclick = () => (panel.dataset.min ? restore() : minimize());
+  ttl.ondblclick = () => (panel.dataset.min ? restore() : minimize());
+  panel.querySelector('#c2u-side').onclick = () => { side = side === 'right' ? 'left' : 'right'; pref.side = side; savePref(); place(); };
+  ttl.addEventListener('pointerdown', ev => {
+    if (!panel.dataset.min) return;
+    ev.preventDefault();
+    const y0 = ev.clientY, t0 = panel.getBoundingClientRect().top;
+    const mv = e => { pref.minTop = Math.round(t0 + e.clientY - y0); panel.style.top = minTop() + 'px'; };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); pref.minTop = minTop(); savePref(); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  });
+  place();
   // パネルの中の画像を押すと大きく表示（もう一度押すと閉じる）
   panel.addEventListener('click', ev => {
     const im = ev.target.closest('img[data-zoom]'); if (!im) return;
