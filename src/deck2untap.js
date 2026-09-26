@@ -4,12 +4,12 @@
  *   遊戯王    : tcg-portal.jp（大会結果・投稿デッキ）/ deck-maker.com（デッキ編集画面）
  *   ポケモン  : cardrush.media / tcg-portal.jp / pokemon-card.com（デッキ表示）
  *   デュエマ  : tcg-portal.jp / deck-maker.com（英語名は Duel Masters Wiki を検索して照合）
- *   ヴァイス  : ws-tcg.com（公式デッキレシピ）/ decklog.bushiroad.com（英語名は登録担当が作る ws-names.json から。未登録はその場で作成依頼）
+ *   ヴァイス  : ws-tcg.com（公式デッキレシピ）/ decklog.bushiroad.com（英語名は登録担当が作る ws-names.json から。未登録はその場で照合・登録の依頼）
  *   ヴァンガード: cf-vanguard.com（入賞者デッキレシピ）/ decklog.bushiroad.com（英語名は Cardfight!! Vanguard Wiki をカード番号で照合）
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v20';
+  const C2U_VER = 'v21';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -467,7 +467,7 @@
   const wsHoc = no => 'https://heartofthecards.com/code/cardlist.html?card=WS_' + encodeURI(no);
   // 名前が英字だけ（例「Shiny Days」）：untap は名前で探すので、英語版の同名の別カードが入ることがある
   const wsAscii = nm => /[A-Za-z]/.test(nm) && !/[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ]/.test(nm);
-  // デッキを開いたときの画面：untap に登録済みか（ws-names.json にあるか）を判定し、未登録はその場で作成依頼
+  // デッキを開いたときの画面：untap に登録済みか（ws-names.json にあるか）を判定し、未登録はその場で照合・登録の依頼
   // ※ HoC の訳は転載禁止なので、英語名の手入力欄は置かない（v20〜。以前ブラウザに保存した手入力の英語名も使わない）
   const wsEditor = (info, rows, title, remote = {}) => {
     const S = 'style="color:#8ab4ff;text-decoration:underline"';
@@ -478,7 +478,7 @@
     info.innerHTML =
       `<div style="margin:6px 0;padding:6px;border-radius:6px;background:#1c1c1c;font-size:13px">` +
       (nOk === rows.length ? `<b style="color:#9be29b">untap に全部登録済み（${rows.length} 種類）</b>。そのまま取り込めます。`
-        : `untap に登録済み <b>${nOk} / ${rows.length}</b> 種類。` + (nNew ? `<span style="color:#ffb454">未登録 ${nNew} 種類</span>は untap に取り込めないので、登録をお願いできます。` : '') +
+        : `untap に登録済み <b>${nOk} / ${rows.length}</b> 種類。` + (nNew ? `<span style="color:#ffb454">未登録 ${nNew} 種類</span>は今のままでは取り込めません。untap にあるか調べて、無ければ登録してもらえます。` : '') +
           (nChk ? `<span style="color:#ffd27a">要確認 ${nChk} 種類</span>は名前が英字だけなので、英語版の同じ名前の別カードが入るかもしれません。` : '')) + `</div>` +
       `<table style="width:100%;border-collapse:collapse;font-size:12px">` +
       rows.map(([no, jp, q], i) =>
@@ -488,9 +488,9 @@
         ` · <a ${S} target="_blank" rel="noopener" href="${esc(wsHoc(no))}" title="ファンの英訳サイト。読むだけ（転載禁止なので登録には使いません）">効果を読む（HoC）</a></div></td></tr>`).join('') +
       `</table><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` +
       `<button data-a="copy" style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 10px">untap用にコピー</button></div>` +
-      (nNew || nChk ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px;font-size:12px">未登録・要確認のカードは、登録をお願いできます。` +
+      (nNew || nChk ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px;font-size:12px">未登録・要確認のカードは、untap にあるか調べて、無ければ登録してもらえます。` +
         `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input data-reqname placeholder="あなたの名前（任意）" value="${esc(reqName())}" style="all:unset;box-sizing:border-box;width:140px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee">` +
-        `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">作成依頼を送る</button>` +
+        `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">照合・登録を頼む</button>` +
         `<button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
         `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '') +
       `<div style="font-size:11px;opacity:.6;margin-top:4px">英語名データ（登録担当が untap に登録した名前）${Object.keys(remote).length} 件を使っています</div>` +
@@ -776,7 +776,7 @@
   const REQ_NAME_KEY = 'c2u-req-name-v1';
   const reqName = () => { try { return localStorage.getItem(REQ_NAME_KEY) || ''; } catch (e) { return ''; } };
   const reqText = (failed, meta, g, forForm, chk = [], ctx = {}) => [
-    '【untap カード作成依頼】',
+    '【untap 照合・登録の依頼】',
     reqName() ? '依頼者: ' + reqName() : '',
     'ゲーム: ' + (UT_NAMES[g] || g || '不明') + (ctx.code ? '（' + ctx.code + '）' : ''),
     'デッキ: ' + (meta.title || '（名前なし）') + (meta.url ? ' | ' + meta.url : ''),
@@ -801,7 +801,7 @@
     msg.innerHTML = long
       ? '<span style="color:#ffb454">依頼が長いので、内容をコピーしました。開いたフォームの「依頼内容」に貼り付けて「送信」を押してください。</span>'
       : '<span style="color:#9be29b">依頼フォームを開きました。内容を確認して「送信」を押してください。</span>登録が終わったら、もう一度取り込むと入ります。';
-    log('作成依頼を送る ' + failed.length + '行' + (chk.length ? ' 要確認' + chk.length : '') + (long ? '（コピー）' : ''));
+    log('照合・登録を頼む ' + failed.length + '行' + (chk.length ? ' 要確認' + chk.length : '') + (long ? '（コピー）' : ''));
   };
   const untapMode = async () => {
     const w = ms => new Promise(r => setTimeout(r, ms));
@@ -875,11 +875,11 @@
         : `<div style="color:#9be29b">取り込みました${panel.querySelector('[data-setname]').checked && meta.title ? '（デッキ名も入れました）' : ''}。確認して、untap 右上の「Save」を押してください。</div>` + countCheck(text, g)) +
         (failed.length ? `<div style="color:#ffb454;margin-top:4px">取り込めなかったカード ${failed.length} 行（名前を押すと調べるページが開きます）:<br>` +
           failed.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '') +
-        (chk.length ? `<div data-chk style="color:#ffd27a;margin-top:6px;padding:6px;border:1px solid #806020;border-radius:6px;background:#2a2410">⚠ 次のカードは、<b>名前が同じ別のカード</b>（英語版の別のカード）が入ったかもしれません。untap のデッキで絵柄を確認して、違ったら作成依頼を送ってください。<br>` +
+        (chk.length ? `<div data-chk style="color:#ffd27a;margin-top:6px;padding:6px;border:1px solid #806020;border-radius:6px;background:#2a2410">⚠ 次のカードは、<b>名前が同じ別のカード</b>（英語版の別のカード）が入ったかもしれません。untap のデッキで絵柄を確認して、違ったら「照合・登録を頼む」を押してください。<br>` +
           chk.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffd27a;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '') +
-        (failed.length || chk.length ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px">${failed.length ? '未登録のカードは、登録をお願いできます。' : '確認したいカードは、登録担当に確認をお願いできます。'}` +
+        (failed.length || chk.length ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px">${failed.length ? '未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。' : '確認したいカードは、untap にあるか調べてもらえます。'}` +
           `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input data-reqname placeholder="あなたの名前（任意）" value="${esc(reqName())}" style="all:unset;box-sizing:border-box;width:140px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee">` +
-          `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">作成依頼を送る</button>` +
+          `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">照合・登録を頼む</button>` +
           `<button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
           `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '');
       const rb = out.querySelector('[data-req]'), rs = out.querySelector('[data-reqsend]'), rn = out.querySelector('[data-reqname]');
@@ -1077,7 +1077,7 @@
     log('開始: ' + location.hostname);
     const decks = await site();
     log('デッキ ' + decks.length + ' 件: ' + decks.map(d => d.title + '（' + d.sub + '）').join(' / ').slice(0, 400));
-    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→ untap に登録済みか確認（未登録は作成依頼）→「untap用にコピー」→ untap に取り込む' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
+    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→ untap に登録済みか確認（未登録は照合・登録の依頼）→「untap用にコピー」→ untap に取り込む' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
     for (const d of decks) {
       const box = document.createElement('div');
       box.style.cssText = 'border:1px solid #3a3d44;border-radius:8px;padding:8px;margin-bottom:8px';

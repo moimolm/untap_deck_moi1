@@ -56,7 +56,7 @@ npm test             # 見本どおりか確認
 | ポケモン | cardrush.media、tcg-portal.jp、pokemon-card.com（デッキ表示） | `data/pokemon-jp-en.json`（Limitless の日本版一覧＋英語版トレーナーズ名） |
 | デュエマ | tcg-portal.jp、deck-maker.com | Duel Masters Wiki を検索し、ページの日本語名と照合 |
 | ヴァンガード | cf-vanguard.com（入賞者レシピ）、decklog.bushiroad.com | Cardfight!! Vanguard Wiki をカード番号で照合 |
-| ヴァイス | ws-tcg.com（デッキレシピ）、decklog.bushiroad.com | ws-names.json で英語名に変換。パネルで untap に登録済みかを判定し、未登録はその場で作成依頼 |
+| ヴァイス | ws-tcg.com（デッキレシピ）、decklog.bushiroad.com | ws-names.json で英語名に変換。パネルで untap に登録済みかを判定し、未登録はその場で照合・登録の依頼 |
 
 ## untap の貼り付け形式（調べて分かったこと）
 

@@ -4,8 +4,8 @@
 2 かぜったい追いついてやる (gim/w124-032)
 
 //c2u 学マス | 優勝 | https://ws-tcg.com/deckrecipe/1/
-=== 作成依頼 ===
-【untap カード作成依頼】
+=== 照合・登録の依頼 ===
+【untap 照合・登録の依頼】
 ゲーム: ヴァイス（WSTCG）
 デッキ: 学マス | https://ws-tcg.com/deckrecipe/1/
 untap の作業用デッキ: https://untap.in/deck/ws1
@@ -13,7 +13,7 @@ untap の作業用デッキ: https://untap.in/deck/ws1
 - GIM/W124-032 | かぜったい追いついてやる | 2枚 | https://ws-tcg.com/wordpress/wp-content/images/cardlist/g/gim_w124/gim_w124_032.png
 === フォームを開いた URL（依頼内容を戻したもの） ===
 https://docs.google.com/forms/d/e/1FAIpQLSfBI-qi51bINoY5ou9_KaH1jOK5RMtb8Yp7GXHrmlPU8xMRtw/viewform
-【untap カード作成依頼】
+【untap 照合・登録の依頼】
 依頼者: たろう
 ゲーム: ヴァイス（WSTCG）
 デッキ: 学マス | https://ws-tcg.com/deckrecipe/1/

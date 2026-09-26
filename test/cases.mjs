@@ -302,7 +302,7 @@ export default [
     },
     result: async p => [
       '=== 取り込まれた内容 ===', await p.evaluate(() => window.__imported),
-      '=== 作成依頼 ===', await p.evaluate(() => window.__req),
+      '=== 照合・登録の依頼 ===', await p.evaluate(() => window.__req),
       '=== フォームを開いた URL（依頼内容を戻したもの） ===', await p.evaluate(() => { const u = new URL(window.__opened || 'about:blank'); return u.origin + u.pathname + '\n' + (u.searchParams.get('entry.1346860428') || '(なし)'); }),
       '=== 送ったあとの表示 ===', await p.innerText('.c2u-req-out'),
       '=== フォームの中身 ===', await p.evaluate(() => JSON.stringify(window.__form(), null, 1)),
