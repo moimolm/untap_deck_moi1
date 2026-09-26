@@ -319,14 +319,23 @@ export default [
       await p.waitForSelector('[data-clip]');
       await p.click('[data-clip]');
       await p.waitForSelector('[data-pick="0"]', { timeout: 15000 });
+      await p.click('[data-zoom]');
+      await p.evaluate(() => { window.__zoom = [...document.querySelectorAll('body > div')].some(d => /zoom-out/.test(d.style.cssText)); [...document.querySelectorAll('body > div')].filter(d => /zoom-out/.test(d.style.cssText)).forEach(d => d.click()); });
       const before = await p.innerText('.c2u-ut-out');
       await p.check('[data-pick="0"][data-j="0"]');
       await p.evaluate(b => { window.__before = b; }, before);
       await p.click('[data-repick]');
       await p.waitForFunction(() => /候補から選んだ/.test(document.querySelector('.c2u-ut-out').innerText), null, { timeout: 15000 });
       await p.click('[data-req]'); await p.waitForTimeout(200);
+      // 最小化 → 中身が残ったまま戻せるか
+      await p.click('#c2u-min');
+      await p.evaluate(() => { const b = document.querySelector('#c2u-body'); window.__min = [b.style.display, document.getElementById('c2u-panel').style.bottom, !!document.querySelector('[data-reqsend]')].join(' / '); });
+      await p.click('#c2u-min');
+      await p.evaluate(() => { const b = document.querySelector('#c2u-body'); window.__min += ' → ' + [b.style.display || '表示', document.getElementById('c2u-panel').style.top].join(' / '); });
     },
     result: async p => [
+      '=== 最小化 → 戻す ===', await p.evaluate(() => window.__min),
+      '=== 画像を押すと拡大 ===', String(await p.evaluate(() => window.__zoom)),
       '=== 選ぶ前の表示 ===', await p.evaluate(() => window.__before),
       '=== 取り込み直しで貼った内容 ===', await p.evaluate(() => window.__imported),
       '=== 取り込み直し後の表示 ===', await p.innerText('.c2u-ut-out'),

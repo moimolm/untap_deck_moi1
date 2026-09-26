@@ -9,9 +9,10 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v24';
+  const C2U_VER = 'v25';
   const ID = 'c2u-panel';
-  document.getElementById(ID)?.remove();
+  // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
+  { const old = document.getElementById(ID); if (old && old.dataset.min && old.__restore) { old.__restore(); return; } old?.remove(); }
 
   /* ---------- UI ---------- */
   const panel = document.createElement('div');
@@ -22,10 +23,42 @@
     'border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);font:13px/1.5 system-ui,sans-serif;padding:12px;text-align:left';
   panel.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-    '<b>untapへ転送 <span style="opacity:.5;font-weight:400;font-size:11px">' + C2U_VER + '</span></b><button id="c2u-x" style="all:unset;cursor:pointer;padding:0 6px;font-size:18px">×</button></div>' +
+    '<b id="c2u-title" style="cursor:default">untapへ転送 <span style="opacity:.5;font-weight:400;font-size:11px">' + C2U_VER + '</span></b><span style="display:flex;gap:2px;align-items:center">' +
+    '<button id="c2u-side" title="パネルを反対側へ移す" style="all:unset;cursor:pointer;padding:0 6px;font-size:15px">⇆</button>' +
+    '<button id="c2u-min" title="小さくする（中身はそのまま）" style="all:unset;cursor:pointer;padding:0 6px;font-size:18px">–</button>' +
+    '<button id="c2u-x" title="閉じる" style="all:unset;cursor:pointer;padding:0 6px;font-size:18px">×</button></span></div>' +
     '<div id="c2u-body">読み込み中…</div>';
   document.body.appendChild(panel);
   panel.querySelector('#c2u-x').onclick = () => panel.remove();
+  // 最小化：右下（または左下）の小さな帯にする。中身は消さないので、戻すと続きから使える
+  let side = 'right';
+  const place = () => { panel.style.left = side === 'left' ? '12px' : ''; panel.style.right = side === 'right' ? '12px' : ''; };
+  const bodyEl = () => panel.querySelector('#c2u-body');
+  const minimize = () => {
+    panel.dataset.min = '1'; bodyEl().style.display = 'none';
+    Object.assign(panel.style, { top: '', bottom: '12px', width: 'auto', padding: '6px 10px' });
+    panel.querySelector('#c2u-min').textContent = '▢'; panel.querySelector('#c2u-min').title = '元の大きさに戻す';
+    panel.firstElementChild.style.marginBottom = '0';
+  };
+  const restore = () => {
+    delete panel.dataset.min; bodyEl().style.display = '';
+    Object.assign(panel.style, { top: '12px', bottom: '', width: 'min(420px,calc(100vw - 24px))', padding: '12px' });
+    panel.querySelector('#c2u-min').textContent = '–'; panel.querySelector('#c2u-min').title = '小さくする（中身はそのまま）';
+    panel.firstElementChild.style.marginBottom = '8px';
+  };
+  panel.__restore = restore;
+  panel.querySelector('#c2u-min').onclick = () => (panel.dataset.min ? restore() : minimize());
+  panel.querySelector('#c2u-title').ondblclick = () => (panel.dataset.min ? restore() : minimize());
+  panel.querySelector('#c2u-side').onclick = () => { side = side === 'right' ? 'left' : 'right'; place(); };
+  // パネルの中の画像を押すと大きく表示（もう一度押すと閉じる）
+  panel.addEventListener('click', ev => {
+    const im = ev.target.closest('img[data-zoom]'); if (!im) return;
+    ev.preventDefault();
+    const z = document.createElement('div');
+    z.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+    z.innerHTML = `<img src="${esc(im.src)}" style="max-width:min(92vw,520px);max-height:92vh;border-radius:8px;box-shadow:0 8px 30px #000">`;
+    z.onclick = () => z.remove(); document.body.appendChild(z);
+  });
   const body = panel.querySelector('#c2u-body');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const status = t => (body.textContent = t);
@@ -962,9 +995,9 @@
               `<span>${L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l)}</span></label>` +
               (cs.length ? `<div style="color:#ffd27a;font-size:11px;margin:4px 0 2px 20px">untap に候補があります。同じカードなら「これを使う」を選ぶと、依頼しなくても取り込めます。</div>` +
                 `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:20px;font-size:11px">` +
-                (g === 'ws' && wsImg(no) ? `<div style="width:78px;text-align:center;opacity:.9"><img src="${esc(wsImg(no))}" alt="" style="width:74px;border-radius:3px;border:1px solid #666"><div>公式（日本語版）</div></div>` : '') +
+                (g === 'ws' && wsImg(no) ? `<div style="width:78px;text-align:center;opacity:.9"><img data-zoom src="${esc(wsImg(no))}" alt="" title="押すと大きく表示" style="width:74px;border-radius:3px;border:1px solid #666;cursor:zoom-in"><div>公式（日本語版）</div></div>` : '') +
                 cs.map((h, j) => `<div style="width:118px;padding:3px;border:1px solid #444;border-radius:4px">` +
-                  (h.img ? `<img src="${esc(h.img)}" alt="" style="width:74px;display:block;margin:0 auto 2px;border-radius:3px">` : '') +
+                  (h.img ? `<img data-zoom src="${esc(h.img)}" alt="" title="押すと大きく表示" style="width:74px;display:block;margin:0 auto 2px;border-radius:3px;cursor:zoom-in">` : '') +
                   `<div style="color:#eee;word-break:break-word">${esc(h.title)}</div><div style="opacity:.7">登録番号 ${esc(h.set)}${h.by ? ' · ' + esc(h.by) : ''}</div>` +
                   (cs.length > 1 && h.usage > 0 && h.usage === maxU ? `<div style="color:#9be29b">よく使われている</div>` : '') +
                   `<label style="display:block;margin-top:2px;cursor:pointer"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="${j}"> これを使う</label>` +
