@@ -2,7 +2,7 @@
   "app": "untapへ転送",
   "kind": "ws-names",
   "note": "名前は untap.in に登録されている名前、または公式の日本語からの自訳（Heart of the Cards の訳は使っていません）",
-  "saved": "2026-09-26T07:11:25.536Z",
+  "saved": "2026-09-26T08:38:00.000Z",
   "names": {
     "GU/WE46-33": "Cocoa, Smile Maker",
     "GU/WE46-39": "Magician of the Smiley Cafe",
@@ -13,6 +13,12 @@
     "ISC/S110-056": "Deliverer of Autumn's Bounty",
     "ISC/S81-001": "Kaho Komiya, Second Form Armored Type",
     "ISC/S81-053": "Asahi Serizawa, Jump! Stag!!!",
-    "ISC/S81-057": "Kiriko Yugiri, Bandage Suite"
+    "ISC/S81-057": "Kiriko Yugiri, Bandage Suite",
+    "UMA/W106-005": "Grass Wonder, Rock-Piercing Blue",
+    "UMA/W106-024": "Maruzensky, Super Car Big Sis",
+    "UMA/W106-035": "Yayoi Akikawa, Academy Chairman",
+    "UMA/W106-066": "Yukino Bijin, Aiming to Become City Girl!",
+    "UMA/W106-119": "Satono Diamond, To Pass the One Ahead",
+    "UMA/W106-122": "Sakura Chiyono O, Best Blooming"
   }
 }
