@@ -2,7 +2,7 @@
   "app": "untapへ転送",
   "kind": "ws-names",
   "note": "名前は untap.in に登録されている名前、または公式の日本語からの自訳（Heart of the Cards の訳は使っていません）",
-  "saved": "2026-09-26T08:38:00.000Z",
+  "saved": "2026-09-26T09:13:06.000Z",
   "names": {
     "GU/WE46-33": "Cocoa, Smile Maker",
     "GU/WE46-39": "Magician of the Smiley Cafe",
@@ -19,6 +19,23 @@
     "UMA/W106-035": "Yayoi Akikawa, Academy Chairman",
     "UMA/W106-066": "Yukino Bijin, Aiming to Become City Girl!",
     "UMA/W106-119": "Satono Diamond, To Pass the One Ahead",
-    "UMA/W106-122": "Sakura Chiyono O, Best Blooming"
+    "UMA/W106-122": "Sakura Chiyono O, Best Blooming",
+    "UMA/W106-024S": "Maruzensky, Super Car Big Sis",
+    "UMA/W106-035S": "Yayoi Akikawa, Academy Chairman",
+    "UMA/W106-050": "Feuille Éclair, Curren Chan",
+    "UMA/W106-050SP": "Feuille Éclair, Curren Chan",
+    "UMA/W106-066S": "Yukino Bijin, Aiming to Become City Girl!",
+    "UMA/W106-076R": "The Autumn Leaf Festival in Full Bloom",
+    "UMA/W119-079": "Dantsu Flame, In the Center of the Stage",
+    "UMA/W119-079SP": "Dantsu Flame, In the Center of the Stage",
+    "UMA/W119-080": "Dantsu Flame, Aiming for Victory",
+    "UMA/W134-021S": "\"History's Third Triple Crown Winner\" Mr. C.B.",
+    "UMA/W134-035": "Tamamo Cross, Japan's Number One Umamusume",
+    "UMA/W134-036S": "Obey Your Master, the Assassin from America",
+    "UMA/W134-037S": "Tamamo Cross, Gray-Coated Umamusume",
+    "UMA/W134-077S": "Mejiro Ardan, Sheltered Young Lady",
+    "UMA/W134-079": "Oguri Cap, First Day as a Transfer Student",
+    "UMA/W134-082S": "Kraft Univer, Team Musaka's Senior",
+    "UMA/W134-094": "Sirius Symboli, the Self-Confident Pioneer"
   }
 }
