@@ -2,7 +2,7 @@
   "app": "untapへ転送",
   "kind": "ws-names",
   "note": "名前は untap.in に登録されている名前、または公式の日本語からの自訳（Heart of the Cards の訳は使っていません）",
-  "saved": "2026-09-26T09:13:06.000Z",
+  "saved": "2026-09-26T09:20:23Z",
   "names": {
     "GU/WE46-33": "Cocoa, Smile Maker",
     "GU/WE46-39": "Magician of the Smiley Cafe",
@@ -36,6 +36,10 @@
     "UMA/W134-077S": "Mejiro Ardan, Sheltered Young Lady",
     "UMA/W134-079": "Oguri Cap, First Day as a Transfer Student",
     "UMA/W134-082S": "Kraft Univer, Team Musaka's Senior",
-    "UMA/W134-094": "Sirius Symboli, the Self-Confident Pioneer"
+    "UMA/W134-094": "Sirius Symboli, the Self-Confident Pioneer",
+    "UMA/W106-122SP": "Sakura Chiyono O, Strength in Full Bloom",
+    "UMA/W106-T30": "The young lady who challenges the jinx",
+    "UMA/W106-T36": "The Beginning of the Wind",
+    "UMA/W134-P09S": "Oguri Cap, Gray-Coated Umamusume"
   }
 }
