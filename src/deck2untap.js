@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v30';
+  const C2U_VER = 'v31';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -566,7 +566,7 @@
       // (番号) を付ける：untap は名前で探し、同じ名前のカードが複数あれば番号の版を選ぶ
       const text = '//deck-1\n' + rows.map(line).join('\n');
       await copyText(withMeta(text, title, ''));
-      out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (nNew ? `<span style="color:#ffb454">データに無い ${nNew} 種類は日本語名のまま入れています（untap で取り込むときに番号で探します）。</span>` : '') + countCheck(text, 'ws');
+      out.innerHTML = `<span style="color:#9be29b">コピーしました。</span>` + (nNew ? `<span style="color:#ffb454">データに無い ${nNew} 種類は日本語名のまま入れています（untap で取り込むときに番号で探します）。</span>` : '') + countCheck(text, 'ws') + nextHtml();
     };
     const failed = rows.filter((r, i) => st[i] === 'new').map(line), chk = rows.filter((r, i) => st[i] === 'chk').map(line);
     const meta = { title, url: location.href }, ctx = { code: 'WSTCG', work: '' };
@@ -787,12 +787,16 @@
     'ページの状態: ' + probes(),
     '操作の記録:', ...LOG.map(l => '  ' + l),
   ].filter(Boolean).join('\n');
+  // コピーしたあとの次の一歩（デッキのページ用）
+  const nextHtml = () => `<div style="font-size:12px;margin-top:6px;padding:6px;border-radius:6px;background:#16233a">次は untap で：デッキの画面を開いて、ブックマーク →「コピーしたデッキを取り込む」。<a href="https://untap.in/" target="_blank" rel="noopener" style="color:#8ab4ff;text-decoration:underline">untap を開く</a>（Decks から同じゲームのデッキを開くか、新しく作る）</div>`;
   const errHtml = (e, big) => {
     errs.push(e); log('エラー: ' + (e.message || e));
     return `<div style="color:#ff7b7b;${big ? '' : 'font-size:12px'}">${esc(e.message || e)}</div>` +
+      (/接続が切れています/.test(e.message || '') ? `<button data-reload style="all:unset;cursor:pointer;margin:4px 6px 0 0;font-size:12px;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">ページを再読み込みする</button>` : '') +
       `<button data-report="${errs.length - 1}" style="all:unset;cursor:pointer;margin-top:4px;font-size:12px;border:1px solid #555;border-radius:6px;padding:2px 8px">報告用にコピー</button>` +
       `<span class="c2u-rep" style="font-size:12px;margin-left:6px;opacity:.8"></span>`;
   };
+  panel.addEventListener('click', ev => { if (ev.target.closest('[data-reload]')) location.reload(); });
   panel.addEventListener('click', async ev => {
     const b = ev.target.closest('[data-report]');
     if (!b) return;
@@ -1040,11 +1044,12 @@
                 `<div data-picked="${i}" style="margin:3px 0 0 20px;font-size:12px;color:#ffb454">未選択：このカードは依頼に入ります</div>` : '') +
               `</div>`;
           }).join('') +
-          `<div data-pickbar style="display:none;margin-top:6px"><button data-repick style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">選んだカードで取り込み直す</button> <span style="font-size:11px;opacity:.8">選んだ英語名はこのブラウザに保存し、依頼を送ると登録担当にも報告されます</span></div>` +
           `<div class="c2u-cp-out" style="font-size:11px;opacity:.85;margin-top:2px"></div>` : '') +
         (chk.length ? `<div data-chk style="color:#ffd27a;margin-top:6px;padding:6px;border:1px solid #806020;border-radius:6px;background:#2a2410">⚠ 次のカードは、<b>名前が同じ別のカード</b>（英語版の別のカード）が入ったかもしれません。untap のデッキで絵柄を確認して、違ったら「照合・登録を頼む」を押してください。<br>` +
           chk.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffd27a;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '') +
-        (failed.length || chk.length || Object.keys(reports).length ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px"><span data-reqlead>${failed.length ? '未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。' : chk.length ? '確認したいカードは、untap にあるか調べてもらえます。' : '候補から選んだ英語名を、登録担当に報告できます（次から誰でも英語名で入るようになります）。'}</span>` +
+        (failed.length || chk.length || Object.keys(reports).length ? `<div data-actions style="position:sticky;bottom:-12px;z-index:2;margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px;background:#1b1d22;box-shadow:0 -6px 12px rgba(0,0,0,.45)">` +
+          `<div data-pickbar style="display:none;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #333"><button data-repick style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">選んだカードで取り込み直す</button> <span style="font-size:11px;opacity:.8">選んだ英語名はこのブラウザに保存し、依頼を送ると登録担当にも報告されます</span></div>` +
+          `<span data-reqlead>${failed.length ? '未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。' : chk.length ? '確認したいカードは、untap にあるか調べてもらえます。' : '候補から選んだ英語名を、登録担当に報告できます（次から誰でも英語名で入るようになります）。'}</span>` +
           `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input data-reqname placeholder="あなたの名前（任意）" value="${esc(reqName())}" style="all:unset;box-sizing:border-box;width:140px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee">` +
           `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">照合・登録を頼む</button>` +
           `<button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
@@ -1057,7 +1062,8 @@
         const nReq = sel().length + chk.length, nPick = Object.keys(picks).length, nRep = Object.keys(reports).length;
         const bar = out.querySelector('[data-pickbar]'); if (bar) bar.style.display = nPick ? '' : 'none';
         const rs = out.querySelector('[data-reqsend]'), rb = out.querySelector('[data-req]');
-        if (rs) { rs.textContent = nReq ? '照合・登録を頼む' : '英語名を報告する'; const off = !nReq && !nRep && !nPick; rs.style.opacity = rb.style.opacity = off ? '.4' : ''; rs.dataset.off = rb.dataset.off = off ? '1' : ''; }
+        const rp2 = out.querySelector('[data-repick]'); if (rp2) rp2.textContent = `選んだカードで取り込み直す（${nPick} 件）`;
+        if (rs) { rs.textContent = nReq ? `照合・登録を頼む（${nReq} 件）` : '英語名を報告する'; const off = !nReq && !nRep && !nPick; rs.style.opacity = rb.style.opacity = off ? '.4' : ''; rs.dataset.off = rb.dataset.off = off ? '1' : ''; }
       };
       out.querySelectorAll('[data-pick]').forEach(r => r.onchange = () => {
         const i = Number(r.dataset.pick), l = failed[i], no = noOf(l), cs = (look && look.cand[no]) || [], j = r.dataset.j;
@@ -1291,16 +1297,17 @@
     log('開始: ' + location.hostname);
     const decks = await site();
     log('デッキ ' + decks.length + ' 件: ' + decks.map(d => d.title + '（' + d.sub + '）').join(' / ').slice(0, 400));
-    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「開く」→「untap用にコピー」→ untap で取り込む（英語名データに無いカードは番号で探します）→ 入らなかったカードだけ依頼' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
+    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「コピー」→ untap で取り込む（英語名データに無いカードは番号で探します）→ 入らなかったカードだけ依頼。中身を確かめたいときは「開く」' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
     for (const d of decks) {
       const box = document.createElement('div');
       box.style.cssText = 'border:1px solid #3a3d44;border-radius:8px;padding:8px;margin-bottom:8px';
       box.innerHTML =
         `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">` +
         `<div${d.el ? ' data-jump title="ページのこのデッキの場所へ移動" style="cursor:pointer"' : ''}><b${d.el ? ' style="text-decoration:underline dotted"' : ''}>${esc(d.title)}</b><div style="opacity:.7;font-size:12px">${esc(d.sub)}${d.el ? ' <span style="opacity:.8">↓ 場所へ</span>' : ''}</div></div>` +
-        `<button style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 12px;white-space:nowrap">${d.ws ? '開く' : 'コピー'}</button></div>` +
+        `<span style="display:flex;gap:6px">` + (d.ws ? `<button data-qcopy style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 12px;white-space:nowrap">コピー</button>` : '') +
+        `<button data-main style="all:unset;cursor:pointer;${d.ws ? 'border:1px solid #2f6fed;color:#8ab4ff' : 'background:#2f6fed;color:#fff'};border-radius:6px;padding:4px 12px;white-space:nowrap">${d.ws ? '開く' : 'コピー'}</button></span></div>` +
         `<div class="c2u-info"></div>`;
-      const btn = box.querySelector('button'), info = box.querySelector('.c2u-info');
+      const btn = box.querySelector('[data-main]'), info = box.querySelector('.c2u-info'), qb = box.querySelector('[data-qcopy]');
       const jb = box.querySelector('[data-jump]');
       if (jb) jb.onclick = () => {
         const e = d.el();
@@ -1314,6 +1321,20 @@
           btn.textContent = '読み込み中…';
           try { const rows = await d.load(); const remote = await wsRemote(); log('開く: ' + d.title + ' ' + rows.length + '種・GitHub辞書' + Object.keys(remote).length + '件'); wsEditor(info, rows, d.title, remote); btn.dataset.open = '1'; btn.textContent = '閉じる'; }
           catch (e) { btn.textContent = '開く'; info.innerHTML = errHtml(e); }
+        };
+        // 開かずにそのままコピー（中身を確かめたいときは「開く」）
+        qb.onclick = async () => {
+          qb.textContent = '準備中…';
+          try {
+            const rows = await d.load(), remote = await wsRemote();
+            const text = '//deck-1\n' + rows.map(([no, jp, q]) => `${q} ${remote[no] || jp} (${no.toLowerCase()})`).join('\n');
+            await copyText(withMeta(text, d.title, ''));
+            const nNew = rows.filter(([no]) => !remote[no]).length;
+            log('コピー（ヴァイス・開かずに）: ' + d.title + ' ' + rows.length + '種 データに無し' + nNew);
+            qb.textContent = 'コピーしました';
+            if (btn.dataset.open) { delete btn.dataset.open; btn.textContent = '開く'; }
+            info.innerHTML = `<div style="font-size:12px;margin-top:4px"><span style="color:#9be29b">コピーしました。</span>` + (nNew ? `英語名データに無い ${nNew} 種類は、untap に取り込むときに番号で探します。` : '全部英語名データにあります。') + `</div>` + countCheck(text, 'ws') + nextHtml();
+          } catch (e) { qb.textContent = 'コピー'; info.innerHTML = errHtml(e); }
         };
         body.appendChild(box);
         continue;
@@ -1330,7 +1351,7 @@
             (b.missing.length ? `<div style="color:#ffb454;font-size:12px;margin-top:4px">英語名が見つからないカード（日本語名のまま出力）。名前を押すと英語名を調べるページが開きます:<br>` +
               b.missing.map(q => b.look ? `<a href="${esc(b.look(q))}" target="_blank" rel="noopener" style="color:#ffb454;text-decoration:underline">${esc(q)}</a>` : esc(q)).join('、') + `</div>` : '') +
             `<details style="margin-top:4px"><summary style="cursor:pointer;opacity:.7;font-size:12px">中身を見る</summary>` +
-            `<pre style="white-space:pre-wrap;font-size:11px;margin:4px 0 0">${esc(b.text)}</pre></details>` + extrasHtml();
+            `<pre style="white-space:pre-wrap;font-size:11px;margin:4px 0 0">${esc(b.text)}</pre></details>` + nextHtml() + extrasHtml();
           wireExtras(info, () => b.text, () => notesText(d.title, d.sub, b.pairs), () => b.pairs);
           if (gameOf(b) === 'op') {
             const box2 = document.createElement('div');

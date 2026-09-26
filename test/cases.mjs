@@ -211,7 +211,7 @@ export default [
       <div class="card-item"><img src="https://ws-tcg.com/x.png" title="GU/WE46-60GUR : マヤ・スロウス"><span class="num">2</span></div>
       <div class="card-item"><img src="https://ws-tcg.com/y.png" title="GU/WE46-39 : にっこりカフェの魔法使い"><span class="num">4</span></div>`,
     steps: async p => {
-      await p.click('#c2u-body button'); await p.waitForSelector('#c2u-panel [data-a="copy"]');
+      await p.click('#c2u-body [data-main]'); await p.waitForSelector('#c2u-panel [data-a="copy"]');
       await p.click('[data-a="copy"]'); await p.waitForTimeout(200);
     },
   },
@@ -221,7 +221,7 @@ export default [
     html: `<div class="deckrecipeBlock">成績\n優勝\nハンドルネーム\nパスタ\nデッキコード\n6472W\nデッキ名\nごちうさ門扉\n<div class="js-recipe-detail-container"></div>
       <a class="js-recipe-load-detail" href="javascript:;" onclick="setTimeout(()=>{this.parentElement.querySelector('.js-recipe-detail-container').innerHTML='<table><tr><th>番号</th><th>カード名</th><th>LV</th><th>枚数</th></tr><tr><td>GU/WE46-62GUR</td><td>チノ・エンヴィ</td><td>3/2</td><td>4枚</td></tr><tr><td>GU/WE46-66</td><td>その一歩は</td><td>-/-</td><td>4枚</td></tr></table>'},100)">詳細を開く</a></div>`,
     steps: async p => {
-      await p.click('#c2u-body button'); await p.waitForSelector('#c2u-panel [data-a="copy"]');
+      await p.click('#c2u-body [data-main]'); await p.waitForSelector('#c2u-panel [data-a="copy"]');
       await p.click('[data-a="copy"]'); await p.waitForTimeout(200);
       await p.evaluate(() => { const oc = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.target === '_blank') window.__opened = this.href; else oc.call(this); }; });
       await p.evaluate(() => { window.__deck = window.__clip; });
@@ -332,7 +332,7 @@ export default [
       const st = () => p.evaluate(() => { const pn = document.getElementById('c2u-panel'), r = pn.getBoundingClientRect(), m = document.getElementById('c2u-min').getBoundingClientRect(); return `min=${!!pn.dataset.min} top=${pn.style.top} right=${pn.style.right || '-'} left=${pn.style.left || '-'} 本体=${document.querySelector('#c2u-body').style.display || '表示'} 下部=${[...pn.children].pop().style.display || '表示'} 依頼ボタン=${!!document.querySelector('[data-reqsend]')} –の位置=右端から${Math.round(innerWidth - m.right)}・左端から${Math.round(m.left)}・上から${Math.round(m.top - r.top)}（帯の上端から）`; });
       const log = [];
       log.push('開いた状態: ' + await st());
-      log.push('中身をスクロールしても見出しが残る: ' + await p.evaluate(() => { const pn = document.getElementById('c2u-panel'); pn.style.maxHeight = '300px'; pn.scrollTop = 250; const d = Math.round(document.getElementById('c2u-min').getBoundingClientRect().top - pn.getBoundingClientRect().top); pn.scrollTop = 0; pn.style.maxHeight = 'calc(100vh - 24px)'; return 'スクロール量=' + 250 + ' –の位置=帯の上端から' + d; }));
+      log.push('中身をスクロールしても見出しが残る: ' + await p.evaluate(() => { const pn = document.getElementById('c2u-panel'); pn.style.maxHeight = '300px'; pn.scrollTop = 0; const ab = document.querySelector('[data-actions]'), pr = pn.getBoundingClientRect(), vis = () => { const r = ab.getBoundingClientRect(); return r.bottom <= pn.getBoundingClientRect().bottom + 1 && r.top >= pn.getBoundingClientRect().top; }; const actTop = vis(); pn.scrollTop = 250; const d = Math.round(document.getElementById('c2u-min').getBoundingClientRect().top - pn.getBoundingClientRect().top) + ' 一番上でも操作の帯が見える=' + actTop + ' スクロール後も見える=' + vis(); pn.scrollTop = 0; pn.style.maxHeight = 'calc(100vh - 24px)'; return 'スクロール量=' + 250 + ' –の位置=帯の上端から' + d; }));
       await p.click('#c2u-min'); log.push('小さくした: ' + await st());
       const b = await p.locator('#c2u-title').boundingBox();
       await p.mouse.move(b.x + 10, b.y + 5); await p.mouse.down(); await p.mouse.move(b.x + 10, b.y + 205, { steps: 5 }); await p.mouse.up();
@@ -361,6 +361,14 @@ export default [
     html: UNTAP_WS_API.replace('$api: { send:', '$api: { socketConnected: false, send:'),
     steps: async p => { await p.waitForSelector('[data-clip]'); await p.click('[data-clip]'); await p.waitForTimeout(1500); },
     result: async p => ['=== 表示 ===', await p.innerText('.c2u-ut-out'), '=== 貼り付けたか ===', String(!!(await p.evaluate(() => window.__imported)))].join('\n'),
+  },
+  {
+    name: 'ws-quickcopy', url: 'https://decklog.bushiroad.com/view/6472W',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: { 'GU/WE46-39': 'Magician of the Smiling Cafe' } }) },
+    html: `デッキ名「ごちうさタイカプ」のデッキ
+      <div class="card-item"><img src="https://ws-tcg.com/x.png" title="GU/WE46-60GUR : マヤ・スロウス"><span class="num">2</span></div>
+      <div class="card-item"><img src="https://ws-tcg.com/y.png" title="GU/WE46-39 : にっこりカフェの魔法使い"><span class="num">4</span></div>`,
+    steps: async p => { await p.click('#c2u-body [data-qcopy]'); await p.waitForFunction(() => /コピーしました/.test(document.querySelector('#c2u-body .c2u-info').innerText), null, { timeout: 15000 }); },
   },
   ...['reprint', 'new'].map(kind => ({
     name: 'untap-ws-register-' + kind, url: 'https://untap.in/deck/ws1',
