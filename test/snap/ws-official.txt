@@ -5,7 +5,7 @@
 
 //c2u デッキ 1 |  | https://ws-tcg.com/deckrecipe/?x=1
 === 表示 ===
-untapへ転送 v23
+untapへ転送 v24
 ×
 「開く」→「untap用にコピー」→ untap で取り込む（英語名データに無いカードは番号で探します）→ 入らなかったカードだけ依頼
 デッキ 1

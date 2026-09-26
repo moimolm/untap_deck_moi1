@@ -99,8 +99,10 @@ function step3() {
 window.__form = () => { const g = id => { const e = document.getElementById(id); return e ? e.value : null; }; return { mode, image: window.__img, title: g('f-title'), id: g('f-id'), printType: g('f-pt'), orientation: g('f-or'), front: g('f-front') }; };
 </script>`;
 // untap の内部検索（card-search の sets）を真似した版。番号 → 登録済みカード
-const UNTAP_WS_API = UNTAP_WS.replace("const DB = [", "const DB = [{ name: 'chyotto ageru- Izumi Mei', sets: ['isc/s81-036'] }, ").replace('</script>', `
-const REG = [{ title: 'chyotto ageru- Izumi Mei', sets: [{ set: 'isc/s81-036', added_by_username: 'someone' }] }, { title: 'Off Record Fuyuko', sets: [{ set: 'isc/s81-27', added_by_username: 'other' }] }];
+const UNTAP_WS_API = UNTAP_WS.replace("const DB = [", "const DB = [{ name: 'chyotto ageru- Izumi Mei', sets: ['isc/s81-036'] }, { name: 'Asahi Serizawa, Jump! Stag!!!', sets: ['isc/s81-053'] }, ").replace('</script>', `
+const REG = [{ title: 'chyotto ageru- Izumi Mei', sets: [{ set: 'isc/s81-036', added_by_username: 'someone' }] }, { title: 'Off Record Fuyuko', sets: [{ set: 'isc/s81-27', added_by_username: 'other' }] },
+  { title: 'Jump! Stag!! Serizawa Asahi', sets: [{ set: 'isc/s81-053', added_by_username: 'a1', usage: 2, front_image: 'https://untap.in/cardsrc/x1.webp' }] },
+  { title: 'Asahi Serizawa, Jump! Stag!!!', sets: [{ set: 'isc/s81-053', added_by_username: 'b2', usage: 9, front_image: 'https://untap.in/cardsrc/x2.webp' }] }];
 document.body.__vue__ = { $root: { $api: { send: async (name, p) => { window.__sent = (window.__sent || []).concat([name + ' ' + JSON.stringify(p.sets)]); return name === 'card-search' ? { results: REG.filter(c => c.sets.some(x => p.sets.some(q => x.set.startsWith(q)))) } : { results: [] }; } } } };
 </script>`);
 
@@ -305,6 +307,29 @@ export default [
       '=== 問い合わせ ===', (await p.evaluate(() => window.__sent || [])).join('\n'),
       '=== 貼った内容 ===', await p.evaluate(() => window.__imported),
       '=== 表示 ===', await p.innerText('.c2u-ut-out'),
+      '=== 依頼内容 ===', await p.evaluate(() => window.__clip),
+    ].join('\n'),
+  },
+  {
+    name: 'untap-ws-pick', url: 'https://untap.in/deck/ws1',
+    api: { 'moimolm.github.io/untap_deck_moi1/ws-names.json': () => ({ names: {} }) },
+    clipboard: '//deck-1\n4 ジャンプ！スタッグ！！！ 芹沢あさひ (isc/s81-053)\n4 謎のカード (isc/s81-099)\n\n//c2u あさひ軸ストレイ | 優勝 | https://ws-tcg.com/deckrecipe/2/',
+    html: UNTAP_WS_API,
+    steps: async p => {
+      await p.waitForSelector('[data-clip]');
+      await p.click('[data-clip]');
+      await p.waitForSelector('[data-pick="0"]', { timeout: 15000 });
+      const before = await p.innerText('.c2u-ut-out');
+      await p.check('[data-pick="0"][data-j="0"]');
+      await p.evaluate(b => { window.__before = b; }, before);
+      await p.click('[data-repick]');
+      await p.waitForFunction(() => /候補から選んだ/.test(document.querySelector('.c2u-ut-out').innerText), null, { timeout: 15000 });
+      await p.click('[data-req]'); await p.waitForTimeout(200);
+    },
+    result: async p => [
+      '=== 選ぶ前の表示 ===', await p.evaluate(() => window.__before),
+      '=== 取り込み直しで貼った内容 ===', await p.evaluate(() => window.__imported),
+      '=== 取り込み直し後の表示 ===', await p.innerText('.c2u-ut-out'),
       '=== 依頼内容 ===', await p.evaluate(() => window.__clip),
     ].join('\n'),
   },

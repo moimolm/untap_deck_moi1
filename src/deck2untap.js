@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v23';
+  const C2U_VER = 'v24';
   const ID = 'c2u-panel';
   document.getElementById(ID)?.remove();
 
@@ -782,13 +782,15 @@
     'デッキ: ' + (meta.title || '（名前なし）') + (meta.url ? ' | ' + meta.url : ''),
     ctx.work ? 'untap の作業用デッキ: ' + ctx.work : '',
     g === 'ws' ? '照合: ' + (ctx.check || (ctx.work ? 'まだ' : 'まだ（デッキのページから）')) : '',
-    '未登録カード（' + failed.length + ' 行）:',
+    failed.length ? '未登録カード（' + failed.length + ' 行）:' : '',
     ...failed.map(l => {
       const m = l.match(/^(\d+) (.+?)(?: \(([^)]+)\)| \[([^\]]+)\])?$/) || [];
       const no = (m[3] || m[4] || '').toUpperCase();
       const c = ctx.cand && no ? ctx.cand(no) : '';
       return '- ' + [no || '（番号なし）', m[2] || l, (m[1] || '?') + '枚', !forForm && g === 'ws' && no ? wsImg(no) : '', c ? '候補: ' + c : ''].filter(Boolean).join(' | ');
     }),
+    ...((ctx.reports && ctx.reports().length) ? ['英語名の報告（依頼者が untap の候補から選択。登録は不要。画像を確かめて ws-names.json に足す）:',
+      ...ctx.reports().map(r => '- ' + [r.no, r.jp, r.qty ? r.qty + '枚' : '', r.title + '（登録番号 ' + r.set + '）'].filter(Boolean).join(' | '))] : []),
     ...(chk.length ? ['要確認（名前だけで別のカードが入ったかもしれない ' + chk.length + ' 行。この番号で登録されているか確認してください）:',
       ...chk.map(l => { const m = l.match(/^(\d+) (.+?) \(([^)]+)\)$/) || []; const no = (m[3] || '').toUpperCase();
         return '- ' + [no, m[2] || l, (m[1] || '?') + '枚', !forForm && no ? wsImg(no) : ''].filter(Boolean).join(' | '); })] : []),
@@ -829,10 +831,12 @@
       const cb = [...document.querySelectorAll('input[type=checkbox]')].find(c => /Clear existing/.test(c.parentElement.textContent));
       if (cb && !cb.checked) cb.click();
       const ib = byText('button', /^Import Cards$/); if (!ib) throw new Error('「Import Cards」ボタンが見つかりません');
+      // 前回の「No cards where imported」の通知がまだ残っていることがあるので、押す前からあるものは数えない
+      const oldToasts = new Set([...document.querySelectorAll('div,span,p')].filter(e => /No cards (where|were) imported/i.test(e.textContent.trim())));
       ib.click();
       await w(2500);
       // 1枚も一致しないと untap は「No cards where imported」を出すだけで、貼り付け画面が開いたまま残る → 全行を失敗扱いにして画面を閉じる
-      const none = byText('div,span,p', /No cards (where|were) imported/i) || (document.querySelector('textarea[placeholder="Paste your cards here"]') && byText('button', /^Import Cards$/));
+      const none = [...document.querySelectorAll('div,span,p')].some(e => !oldToasts.has(e) && e.offsetParent !== null && /No cards (where|were) imported/i.test(e.textContent.trim())) || (document.querySelector('textarea[placeholder="Paste your cards here"]') && byText('button', /^Import Cards$/));
       if (none) {
         const cancel = byText('button', /^Cancel$/); if (cancel) { cancel.click(); await w(300); }
         return { all: true, failed: text.split('\n').map(s => s.trim()).filter(s => /^\d+ /.test(s)) };
@@ -892,7 +896,7 @@
           const r = await Promise.race([api.send('card-search', { ccg: 'wstcg', sets: keys.slice(i, i + 30) }), w(10000).then(() => { throw new Error('timeout'); })]);
           for (const c of (r && r.results) || []) for (const st of c.sets || []) {
             const k = String(st.set || '').toLowerCase(); if (!(k in want)) continue;
-            (hits[k] = hits[k] || []).push({ title: c.title, set: st.set, by: st.added_by_username || '' });
+            (hits[k] = hits[k] || []).push({ title: c.title, set: st.set, by: st.added_by_username || '', img: st.front_image || '', usage: Number(st.usage || c.usage || 0) || 0 });
           }
         }
       } catch (e) { log('番号照合 失敗: ' + e.message); return { ok: false, found, cand }; }
@@ -900,11 +904,13 @@
         const ex = hits[no.toLowerCase()] || [], titles = [...new Set(ex.map(h => h.title))];
         if (titles.length === 1) { found[no] = titles[0]; continue; }
         const cs = [...ex, ...wsVariants(no).flatMap(v => hits[v] || [])];
-        if (cs.length) cand[no] = cs.filter((h, i) => cs.findIndex(x => x.title === h.title && x.set === h.set) === i).slice(0, 3);
+        // 同じ名前・同じ番号は1つにまとめ、よく使われている順に並べる
+        if (cs.length) cand[no] = cs.filter((h, i) => cs.findIndex(x => x.title === h.title && x.set === h.set) === i).sort((a, b) => b.usage - a.usage).slice(0, 4);
       }
       return { ok: true, found, cand };
     };
     let last = null; // 最後に取り込んだデッキ（再取り込み用）
+    let reports = {}; // 候補から選んだ英語名（番号 → {no, jp, qty, title, set}）。同じデッキを取り込み直しても残す
     const doImport = async (text, meta, out) => {
       if (!onDeck) throw new Error('untap のデッキ編集画面（Decks → デッキを開いた画面）で実行してください');
       const g2 = guessGame(text);
@@ -932,6 +938,8 @@
         ctx.check = look.ok ? `済み（untap で番号照合。見つかった ${nFound} ／ 候補あり ${nCand} ／ 無し ${failed.length - nCand}）` : 'できませんでした（untap の検索が使えませんでした）';
         ctx.cand = no => (look.cand[no] || []).map(h => `${h.title}（登録番号 ${h.set}）`).join(' / ');
       }
+      if (!last || last.meta.title !== meta.title) reports = {};
+      ctx.reports = () => Object.values(reports);
       last = { text, meta };
       if (panel.querySelector('[data-setname]').checked) setName(meta.title);
       record(text, meta);
@@ -944,19 +952,74 @@
         (!res.all && res.got != null && res.got < res.want - failed.reduce((t, l) => t + (Number((l.match(/^\d+/) || [0])[0]) || 0), 0) ? `<div data-short style="color:#ff9b9b;margin-top:4px">⚠ untap のデッキは ${res.got} 枚です（貼ったのは ${res.want} 枚）。下の一覧のほかにも入っていないカードがあります。untap 左側の「Cards failed import」を見てください。</div>` : '') +
         (look && Object.keys(look.found).length ? `<div data-found style="color:#9be29b;margin-top:4px">untap で番号から ${Object.keys(look.found).length} 種類見つけて、untap の英語名で取り込みました。</div>` : '') +
         (look && !look.ok ? `<div style="opacity:.8;margin-top:4px">（untap の検索が使えなかったので、番号からの照合はしていません）</div>` : '') +
-        (failed.length ? `<div style="color:#ffb454;margin-top:4px">取り込めなかったカード ${failed.length} 行（名前を押すと調べるページが開きます）:<br>` +
-          failed.map(l => { const L = LOOK[g]; const c = ctx.cand && ctx.cand(noOf(l)); return (L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l)) + (c ? `<div style="color:#ffd27a;font-size:11px;margin-left:10px">似た番号で登録あり（同じカードか登録担当が確認）：${esc(c)}</div>` : ''); }).join('<br>') + `</div>` : '') +
+        (g === "ws" && Object.keys(reports).length ? `<div style="color:#9be29b;margin-top:4px">候補から選んだ ${Object.keys(reports).length} 種類は、選んだ英語名で取り込みました。</div>` : '') +
+        (failed.length ? `<div style="color:#ffb454;margin-top:6px">取り込めなかったカード ${failed.length} 行。<b>チェックの入ったカード</b>を依頼に入れます（名前を押すと調べるページが開きます）:</div>` +
+          failed.map((l, i) => {
+            const L = LOOK[g], no = noOf(l), cs = (look && look.cand[no]) || [];
+            const maxU = Math.max(0, ...cs.map(h => h.usage));
+            return `<div data-fl="${i}" style="margin-top:4px;padding:4px 6px;border-left:3px solid #ffb454;background:#1a1a1a;border-radius:4px">` +
+              `<label style="display:flex;gap:6px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-inc="${i}" checked style="margin-top:3px">` +
+              `<span>${L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffb454;text-decoration:underline">${esc(l)}</a>` : esc(l)}</span></label>` +
+              (cs.length ? `<div style="color:#ffd27a;font-size:11px;margin:4px 0 2px 20px">untap に候補があります。同じカードなら「これを使う」を選ぶと、依頼しなくても取り込めます。</div>` +
+                `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:20px;font-size:11px">` +
+                (g === 'ws' && wsImg(no) ? `<div style="width:78px;text-align:center;opacity:.9"><img src="${esc(wsImg(no))}" alt="" style="width:74px;border-radius:3px;border:1px solid #666"><div>公式（日本語版）</div></div>` : '') +
+                cs.map((h, j) => `<div style="width:118px;padding:3px;border:1px solid #444;border-radius:4px">` +
+                  (h.img ? `<img src="${esc(h.img)}" alt="" style="width:74px;display:block;margin:0 auto 2px;border-radius:3px">` : '') +
+                  `<div style="color:#eee;word-break:break-word">${esc(h.title)}</div><div style="opacity:.7">登録番号 ${esc(h.set)}${h.by ? ' · ' + esc(h.by) : ''}</div>` +
+                  (cs.length > 1 && h.usage > 0 && h.usage === maxU ? `<div style="color:#9be29b">よく使われている</div>` : '') +
+                  `<label style="display:block;margin-top:2px;cursor:pointer"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="${j}"> これを使う</label>` +
+                  `<button data-cp="${esc(h.title)}" style="all:unset;cursor:pointer;color:#8ab4ff;text-decoration:underline">名前をコピー</button></div>`).join('') +
+                `<label style="align-self:center;cursor:pointer"><input type="radio" name="c2u-pick-${i}" data-pick="${i}" data-j="" checked> どれでもない</label></div>` : '') +
+              `</div>`;
+          }).join('') +
+          `<div data-pickbar style="display:none;margin-top:6px"><button data-repick style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:3px 10px">選んだカードで取り込み直す</button> <span style="font-size:11px;opacity:.8">選んだ英語名はこのブラウザに保存し、依頼を送ると登録担当にも報告されます</span></div>` +
+          `<div class="c2u-cp-out" style="font-size:11px;opacity:.85;margin-top:2px"></div>` : '') +
         (chk.length ? `<div data-chk style="color:#ffd27a;margin-top:6px;padding:6px;border:1px solid #806020;border-radius:6px;background:#2a2410">⚠ 次のカードは、<b>名前が同じ別のカード</b>（英語版の別のカード）が入ったかもしれません。untap のデッキで絵柄を確認して、違ったら「照合・登録を頼む」を押してください。<br>` +
           chk.map(l => { const L = LOOK[g]; return L ? `<a target="_blank" rel="noopener" href="${esc(L(untapLookQ(g, l)))}" style="color:#ffd27a;text-decoration:underline">${esc(l)}</a>` : esc(l); }).join('<br>') + `</div>` : '') +
-        (failed.length || chk.length ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px">${failed.length ? '未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。' : '確認したいカードは、untap にあるか調べてもらえます。'}` +
+        (failed.length || chk.length || Object.keys(reports).length ? `<div style="margin-top:6px;padding:6px;border:1px dashed #ffb454;border-radius:6px"><span data-reqlead>${failed.length ? '未登録のカードは、untap にあるか調べて、無ければ登録してもらえます。' : chk.length ? '確認したいカードは、untap にあるか調べてもらえます。' : '候補から選んだ英語名を、登録担当に報告できます（次から誰でも英語名で入るようになります）。'}</span>` +
           `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px"><input data-reqname placeholder="あなたの名前（任意）" value="${esc(reqName())}" style="all:unset;box-sizing:border-box;width:140px;padding:2px 4px;background:#111;border:1px solid #444;border-radius:4px;color:#eee">` +
           `<button data-reqsend style="all:unset;cursor:pointer;background:#b8741a;color:#fff;border-radius:6px;padding:3px 10px">照合・登録を頼む</button>` +
           `<button data-req style="all:unset;cursor:pointer;border:1px solid #ffb454;color:#ffb454;border-radius:6px;padding:3px 10px">依頼内容をコピー</button></div>` +
           `<div class="c2u-req-out" style="margin-top:4px;opacity:.9"></div></div>` : '');
+      // チェック・候補の選択
+      const picks = {}; // 行番号 → 候補
+      const inc = i => { const c = out.querySelector(`[data-inc="${i}"]`); return !c || c.checked; };
+      const sel = () => failed.filter((l, i) => inc(i) && !picks[i]);
+      const upd = () => {
+        const nReq = sel().length + chk.length, nPick = Object.keys(picks).length, nRep = Object.keys(reports).length;
+        const bar = out.querySelector('[data-pickbar]'); if (bar) bar.style.display = nPick ? '' : 'none';
+        const rs = out.querySelector('[data-reqsend]'), rb = out.querySelector('[data-req]');
+        if (rs) { rs.textContent = nReq ? '照合・登録を頼む' : '英語名を報告する'; const off = !nReq && !nRep && !nPick; rs.style.opacity = rb.style.opacity = off ? '.4' : ''; rs.dataset.off = rb.dataset.off = off ? '1' : ''; }
+      };
+      out.querySelectorAll('[data-pick]').forEach(r => r.onchange = () => {
+        const i = Number(r.dataset.pick), l = failed[i], no = noOf(l), cs = (look && look.cand[no]) || [], j = r.dataset.j;
+        const c = out.querySelector(`[data-inc="${i}"]`);
+        if (j === '') { delete picks[i]; if (c) c.checked = true; }
+        else { picks[i] = cs[Number(j)]; if (c) c.checked = false; }
+        upd();
+      });
+      out.querySelectorAll('[data-inc]').forEach(c => c.onchange = upd);
+      out.querySelectorAll('[data-cp]').forEach(b => b.onclick = async () => { await copyText(b.dataset.cp); out.querySelector('.c2u-cp-out').textContent = `「${b.dataset.cp}」をコピーしました。untap 左上の「Search cards」に貼ると、大きな画像で確かめられます。`; });
+      const addPicks = () => {
+        const d = wsDict();
+        for (const i in picks) {
+          const l = failed[i], no = noOf(l), m = l.match(/^(\d+) (.+?) \(/) || [];
+          reports[no] = { no, jp: m[2] || l, qty: Number(m[1]) || 0, title: picks[i].title, set: picks[i].set };
+          d[no] = picks[i].title; if (wsNames) wsNames[no] = picks[i].title;
+        }
+        wsSave(d);
+      };
+      const rp = out.querySelector('[data-repick]');
+      if (rp) rp.onclick = async () => {
+        addPicks(); log('候補から選択 ' + Object.keys(picks).length + '件 → 取り込み直し');
+        try { await doImport(text, meta, out); } catch (e) { out.innerHTML = errHtml(e); }
+      };
+      const reqNow = () => { addPicks(); return sel(); };
       const rb = out.querySelector('[data-req]'), rs = out.querySelector('[data-reqsend]'), rn = out.querySelector('[data-reqname]');
       if (rn) rn.oninput = () => { try { localStorage.setItem(REQ_NAME_KEY, rn.value.trim()); } catch (e) {} };
-      if (rb) rb.onclick = async () => { await copyText(reqText(failed, meta, g, false, chk, ctx)); out.querySelector('.c2u-req-out').textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
-      if (rs) rs.onclick = () => sendReq(failed, meta, g, out.querySelector('.c2u-req-out'), chk, ctx).catch(e => { out.querySelector('.c2u-req-out').innerHTML = errHtml(e); });
+      if (rb) rb.onclick = async () => { if (rb.dataset.off) return; await copyText(reqText(reqNow(), meta, g, false, chk, ctx)); out.querySelector('.c2u-req-out').textContent = 'コピーしました。LINE などで登録してくれる人に送るか、登録担当のチャットに貼ってください'; };
+      if (rs) rs.onclick = () => { if (rs.dataset.off) return; sendReq(reqNow(), meta, g, out.querySelector('.c2u-req-out'), chk, ctx).catch(e => { out.querySelector('.c2u-req-out').innerHTML = errHtml(e); }); };
+      upd();
       renderHist();
       return failed;
     };
