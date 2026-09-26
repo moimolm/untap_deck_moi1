@@ -24,6 +24,8 @@ const YG_API = {
     { name: { ja: '無限泡影', en: 'Infinite Impermanence' } },
     { name: { ja: 'アクセスコード・トーカー', en: 'Accesscode Talker' } },
     { name: { ja: '有限と無限のアルス・マグナ', en: 'Ars Magna the Finite and the Infinite' } },
+    { name: { ja: '閃刀姫－シズク', en: 'Sky Striker Ace - Shizuku' } },
+    { name: { ja: 'ブルーアイズ・ホワイト・ドラゴン', en: 'Blue-Eyes White Dragon' } },
   ],
 };
 const DM_WIKI = {
@@ -164,8 +166,8 @@ export default [
   {
     name: 'yg-deckmaker', url: 'https://deck-maker.com/decks/new/', api: YG_API,
     html: `<div class="DeckArea"></div><script>
-      window.$nuxt={$store:{state:{yg:{cards:{a:{mainCardId:1,name:'灰流うらら'},b:{mainCardId:2,name:'増殖するG'},c:{mainCardId:3,name:'アクセスコード・トーカー'}}},dm:{cards:{}}}}};
-      document.querySelector('.DeckArea').__vue__={mainCards:[...Array(20)].map(()=>({mainCardId:1})).concat([...Array(20)].map(()=>({mainCardId:2}))),extraCards:[{mainCardId:3}],sideCards:[]};
+      window.$nuxt={$store:{state:{yg:{cards:{a:{mainCardId:1,name:'灰流うらら'},b:{mainCardId:2,name:'増殖するG'},c:{mainCardId:3,name:'アクセスコード・トーカー'},d:{mainCardId:4,name:'閃刀姫ーシズク'},e:{mainCardId:5,name:'ブルーアイズ・ホワイト・ドラゴン'}}},dm:{cards:{}}}}};
+      document.querySelector('.DeckArea').__vue__={mainCards:[...Array(20)].map(()=>({mainCardId:1})).concat([...Array(20)].map(()=>({mainCardId:2}))),extraCards:[{mainCardId:3}],sideCards:[{mainCardId:4},{mainCardId:5}]};
     </script>`,
   },
   {

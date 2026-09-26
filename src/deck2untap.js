@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v32';
+  const C2U_VER = 'v33';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -302,6 +302,15 @@
     cacheSet('c2u-ygo-ja2en-v1', m);
     return m;
   };
+  // 区切りの揺れに強い照合用：長音「ー」とハイフン類（－ − - ‐ – — ―）を同じ文字として扱う
+  //   例：DECK MAKER の「閃刀姫ーシズク」→ 公式「閃刀姫－シズク」。カタカナの長音も両側で同じ置き換えになるので、ふつうの名前は崩れない
+  const ygLoose = s => ygNorm(s).replace(/[ー－−\-‐‑–—―ｰ]/g, '|');
+  let ygLooseMap = null, ygLooseSrc = null;
+  const ygFind = (m, n) => {
+    const en = m[ygNorm(n)]; if (en) return en;
+    if (ygLooseSrc !== m) { ygLooseSrc = m; ygLooseMap = {}; for (const k in m) { const lk = k.replace(/[ー－−\-‐‑–—―ｰ]/g, '|'); if (!(lk in ygLooseMap)) ygLooseMap[lk] = m[k]; } }
+    return ygLooseMap[ygLoose(n)];
+  };
   // untap 側が公式英語名と違う名前（有志翻訳）で登録しているカード
   const YG_ALIAS = {
     'Ars Magna the Finite and the Infinite': 'Ars Magna of Infinity and Finity',
@@ -315,7 +324,7 @@
       const rows = zones[z] || [];
       if (!rows.length) continue;
       parts.push(head[z] + '\n' + rows.map(([n, q]) => {
-        let en = m[ygNorm(n)];
+        let en = ygFind(m, n);
         if (en && YG_ALIAS[en]) en = YG_ALIAS[en];
         if (!en) missing.push(n); else pairs.push([en, n]);
         return `${q} ${en || n}`;
@@ -842,6 +851,9 @@
   const REQ_ENTRY = 'entry.1346860428';
   const REQ_NAME_KEY = 'c2u-req-name-v1';
   const reqName = () => { try { return localStorage.getItem(REQ_NAME_KEY) || ''; } catch (e) { return ''; } };
+  // ※ 依頼文の形は登録担当のルーティンが読み取っている（1行目【untap 照合・登録の依頼】/旧【untap カード作成依頼】、
+  //   「照合:」行、カード行の「候補:」、「英語名の報告」欄、「番号照合で見つかった英語名」欄の見出しの書き出し、区切りの「 | 」）。
+  //   見出しの文言や区切りを変えるときは、先に登録担当のチャットに知らせてルーティンを直してもらうこと
   const reqText = (failed, meta, g, forForm, chk = [], ctx = {}) => [
     '【untap 照合・登録の依頼】',
     reqName() ? '依頼者: ' + reqName() : '',

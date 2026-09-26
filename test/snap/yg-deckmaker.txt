@@ -6,6 +6,10 @@
 //deck-2
 1 Accesscode Talker
 
-//c2u DECK MAKER のデッキ | メイン40・EX1・サイド0 | https://deck-maker.com/decks/new/
+//sideboard-1
+1 Sky Striker Ace - Shizuku
+1 Blue-Eyes White Dragon
+
+//c2u DECK MAKER のデッキ | メイン40・EX1・サイド2 | https://deck-maker.com/decks/new/
 === 表示 ===
-元のデッキの枚数チェック：メイン 40枚 ✓・EX 1枚 ✓
+元のデッキの枚数チェック：メイン 40枚 ✓・EX 1枚 ✓・サイド 2枚 ✓
