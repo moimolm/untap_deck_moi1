@@ -288,15 +288,18 @@
   };
 
   /* ================= 遊戯王 共通：日本語名 → 英語名 ================= */
+  // 異体字をそろえる（公式・yaml-yugi は「俱利伽羅天童」、EDOPro やサイトは「倶利伽羅天童」など）
+  const YG_KANJI = { '俱': '倶', '﨑': '崎', '髙': '高', '顚': '顛', '剝': '剥', '𠮟': '叱', '塡': '填', '頰': '頬', '繫': '繋', '囊': '嚢', '醬': '醤', '蠟': '蝋', '瀆': '涜', '搔': '掻', '摑': '掴', '禱': '祷', '鷗': '鴎' };
+  const YG_KANJI_RE = new RegExp('[' + Object.keys(YG_KANJI).join('') + ']', 'gu');
   const ygNorm = s => String(s || '')
     .replace(/<rt>.*?<\/rt>/g, '').replace(/<rp>.*?<\/rp>/g, '').replace(/<\/?ruby>/g, '')
-    .normalize('NFKC').replace(/[〜～]/g, '~').replace(/[\s・]/g, '').toLowerCase();
+    .normalize('NFKC').replace(/[〜～]/g, '~').replace(/[\s・]/g, '').replace(YG_KANJI_RE, c => YG_KANJI[c]).toLowerCase();
   // yaml-yugi から「日本語名 → 英語名・Konami ID・パスコード」を作る（EDOPro 用にパスコードも持つ）
   //   保存は1つの表にまとめる：{正規化した日本語名: "英語名\tKonamiID\tパスコード"}（英語名が無い OCG 専用カードも入れる）
   let ygMem = null;
   const ygData = async (say = status) => {
     if (ygMem) return ygMem;
-    let raw = cacheGet('c2u-ygo-v2', 7 * DAY);
+    let raw = cacheGet('c2u-ygo-v3', 7 * DAY);
     if (!raw) {
       say('遊戯王のカード名データを取得中…（初回のみ・約100MB、10秒ほど）');
       const r = await fetch('https://dawnbrandbots.github.io/yaml-yugi/cards.json');
@@ -308,8 +311,8 @@
         if (!k || (k in raw && raw[k].split('\t')[2])) continue; // 同じ名前が並ぶときはパスコードのある方を残す
         raw[k] = [c.name.en || '', c.konami_id || '', c.password || ''].join('\t');
       }
-      try { localStorage.removeItem('c2u-ygo-ja2en-v1'); } catch (e) {} // 旧版の表（英語名だけ）は消して場所を空ける
-      cacheSet('c2u-ygo-v2', raw);
+      try { localStorage.removeItem('c2u-ygo-ja2en-v1'); localStorage.removeItem('c2u-ygo-v2'); } catch (e) {} // 旧版の表は消して場所を空ける
+      cacheSet('c2u-ygo-v3', raw);
     }
     const en = {}, ids = {};
     for (const k in raw) { const [e, kid, pw] = raw[k].split('\t'); if (e) en[k] = e; if (kid || pw) ids[k] = [Number(kid) || 0, Number(pw) || 0]; }
@@ -382,13 +385,13 @@
   };
   // yaml-yugi に無い新しいカード用：ygoresources（Konami のデータベースの写し）の日本語名 → Konami ID
   const ygresIdx = async () => {
-    let m = cacheGet('c2u-ygres-ja-v1', 3 * DAY);
+    let m = cacheGet('c2u-ygres-ja-v2', 3 * DAY);
     if (m) return m;
     const r = await fetch('https://db.ygoresources.com/data/idx/card/name/ja');
     if (!r.ok) return {};
     m = {};
     for (const [k, v] of Object.entries(await r.json())) { const n = ygNorm(k); if (!(n in m) && v && v[0]) m[n] = v[0]; }
-    cacheSet('c2u-ygres-ja-v1', m);
+    cacheSet('c2u-ygres-ja-v2', m);
     return m;
   };
   const edoB64 = bytes => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); };

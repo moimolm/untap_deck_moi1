@@ -24,6 +24,7 @@ const YG_API = {
     { konami_id: 13631, password: 10045474, name: { ja: '無限泡影', en: 'Infinite Impermanence' } },
     { konami_id: 14007, password: 86066372, name: { ja: 'アクセスコード・トーカー', en: 'Accesscode Talker' } },
     { konami_id: 99001, password: 99000001, name: { ja: 'ＯＣＧだけのカード' } },
+    { konami_id: 17433, password: 35405755, name: { ja: '俱利伽羅天童', en: 'Kurikara Divincarnate' } },
     { name: { ja: '有限と無限のアルス・マグナ', en: 'Ars Magna the Finite and the Infinite' } },
     { name: { ja: '閃刀姫－シズク', en: 'Sky Striker Ace - Shizuku' } },
     { name: { ja: 'ブルーアイズ・ホワイト・ドラゴン', en: 'Blue-Eyes White Dragon' } },
@@ -238,7 +239,7 @@ export default [
     name: 'yg-paste', url: 'https://example.com/', api: YG_EDO_API,
     html: '<p>関係ないページ</p>',
     steps: async p => {
-      await p.fill('#c2u-body textarea', 'Main Deck:\n3 灰流うらら\n2 増殖するG\n\nExtra Deck:\n1 アクセスコード・トーカー\n\nSide Deck:\n1 無限泡影');
+      await p.fill('#c2u-body textarea', 'Main Deck:\n3 灰流うらら\n2 増殖するG\n1 倶利伽羅天童\n\nExtra Deck:\n1 アクセスコード・トーカー\n\nSide Deck:\n1 無限泡影');
       await p.click('[data-paste]');
       await p.waitForFunction(() => window.__clip, null, { timeout: 30000 });
       await p.waitForTimeout(200);

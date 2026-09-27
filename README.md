@@ -52,11 +52,21 @@ npm test             # 見本どおりか確認
 | ゲーム | サイト | 英語名 |
 |---|---|---|
 | ONE PIECE | cardrush.media、tcg-portal.jp | punk-records（GitHub）の公式英語名。型番は `[op16-042]` の角括弧で指定 |
-| 遊戯王 | tcg-portal.jp、deck-maker.com | yaml-yugi（約100MB、7日キャッシュ）＋一部の別名対応 |
+| 遊戯王 | tcg-portal.jp、deck-maker.com、gachi-matome.com | yaml-yugi（約100MB、7日キャッシュ）＋一部の別名対応。ガチまとめはカード名を DECK MAKER の公開 API で引く |
 | ポケモン | cardrush.media、tcg-portal.jp、pokemon-card.com（デッキ表示） | `data/pokemon-jp-en.json`（Limitless の日本版一覧＋英語版トレーナーズ名） |
 | デュエマ | tcg-portal.jp、deck-maker.com | Duel Masters Wiki を検索し、ページの日本語名と照合 |
 | ヴァンガード | cf-vanguard.com（入賞者レシピ）、decklog.bushiroad.com | Cardfight!! Vanguard Wiki をカード番号で照合 |
 | ヴァイス | ws-tcg.com（デッキレシピ）、decklog.bushiroad.com | ws-names.json で英語名に変換。パネルで untap に登録済みかを判定し、未登録はその場で照合・登録の依頼 |
+
+## 遊戯王 → EDOPro・YGO Omega
+
+- 遊戯王のデッキには「EDOPro・Omega」ボタンが出る。コピーするのは **Omega のコード**（`[メイン+EX枚数, サイド枚数]` ＋ パスコード（32bit リトルエンディアン）を raw deflate → Base64）
+  - YGO Omega：デッキ管理の Import
+  - EDOPro：デッキ編集で Ctrl+V（または YDKE → Import）。EDOPro は `ydke://` と Omega のコードの両方を読む（edopro の `deck_manager.cpp` `ImportDeckBase64Omega`）。EDOPro の「プレーンテキスト」は書き出し専用で、取り込めない
+  - 予備：`ydke://メイン!EX!サイド!`（各部分はパスコードを並べて Base64）と `.ydk` の保存
+- パスコード：yaml-yugi（日本語名 → Konami ID・パスコード）→ YGOPRODeck（`konami_id` で引き、`card_images` が絵違い）。yaml-yugi に無い新しいカードは ygoresources の日本語名索引で Konami ID を探す
+- 絵違いの画像は EDOPro が使う Project Ignis の画像サーバー（`pics.projectignis.org:2096/pics/<パスコード>.jpg`）。読めない絵は YGOPRODeck の画像にして「EDOPro×」
+- 覚えるもの（サイトごとのブラウザ）：`c2u-edo-art-v1`（選んだ絵）・`c2u-edo-fix-v1`（手で入れたパスコード）
 
 ## untap の貼り付け形式（調べて分かったこと）
 
