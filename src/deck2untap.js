@@ -1,7 +1,7 @@
 /* deck → untap.in  v14
  * 対応:
  *   ONE PIECE : cardrush.media（デッキ記事・デッキ詳細）
- *   遊戯王    : tcg-portal.jp（大会結果・投稿デッキ）/ deck-maker.com（デッキ編集画面）
+ *   遊戯王    : tcg-portal.jp（大会結果・投稿デッキ）/ deck-maker.com（デッキ編集画面）/ gachi-matome.com（デッキレシピ）。EDOPro 用（ydke://）のコピーも
  *   ポケモン  : cardrush.media / tcg-portal.jp / pokemon-card.com（デッキ表示）
  *   デュエマ  : tcg-portal.jp / deck-maker.com（英語名は Duel Masters Wiki を検索して照合）
  *   ヴァイス  : ws-tcg.com（公式デッキレシピ）/ decklog.bushiroad.com（英語名は登録担当が作る ws-names.json から。未登録はその場で照合・登録の依頼）
@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v33';
+  const C2U_VER = 'v34';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -291,25 +291,40 @@
   const ygNorm = s => String(s || '')
     .replace(/<rt>.*?<\/rt>/g, '').replace(/<rp>.*?<\/rp>/g, '').replace(/<\/?ruby>/g, '')
     .normalize('NFKC').replace(/[〜～]/g, '~').replace(/[\s・]/g, '').toLowerCase();
-  const ygNames = async () => {
-    let m = cacheGet('c2u-ygo-ja2en-v1', 7 * DAY);
-    if (m) return m;
-    status('遊戯王の英語カード名データを取得中…（初回のみ・約100MB、10秒ほど）');
-    const r = await fetch('https://dawnbrandbots.github.io/yaml-yugi/cards.json');
-    if (!r.ok) throw new Error('英語名データを取得できませんでした（' + r.status + '）');
-    m = {};
-    for (const c of await r.json()) if (c.name && c.name.ja && c.name.en) m[ygNorm(c.name.ja)] = c.name.en;
-    cacheSet('c2u-ygo-ja2en-v1', m);
-    return m;
+  // yaml-yugi から「日本語名 → 英語名・Konami ID・パスコード」を作る（EDOPro 用にパスコードも持つ）
+  //   保存は1つの表にまとめる：{正規化した日本語名: "英語名\tKonamiID\tパスコード"}（英語名が無い OCG 専用カードも入れる）
+  let ygMem = null;
+  const ygData = async (say = status) => {
+    if (ygMem) return ygMem;
+    let raw = cacheGet('c2u-ygo-v2', 7 * DAY);
+    if (!raw) {
+      say('遊戯王のカード名データを取得中…（初回のみ・約100MB、10秒ほど）');
+      const r = await fetch('https://dawnbrandbots.github.io/yaml-yugi/cards.json');
+      if (!r.ok) throw new Error('英語名データを取得できませんでした（' + r.status + '）');
+      raw = {};
+      for (const c of await r.json()) {
+        if (!c.name || !c.name.ja) continue;
+        const k = ygNorm(c.name.ja);
+        if (!k || (k in raw && raw[k].split('\t')[2])) continue; // 同じ名前が並ぶときはパスコードのある方を残す
+        raw[k] = [c.name.en || '', c.konami_id || '', c.password || ''].join('\t');
+      }
+      try { localStorage.removeItem('c2u-ygo-ja2en-v1'); } catch (e) {} // 旧版の表（英語名だけ）は消して場所を空ける
+      cacheSet('c2u-ygo-v2', raw);
+    }
+    const en = {}, ids = {};
+    for (const k in raw) { const [e, kid, pw] = raw[k].split('\t'); if (e) en[k] = e; if (kid || pw) ids[k] = [Number(kid) || 0, Number(pw) || 0]; }
+    return (ygMem = { en, ids });
   };
+  const ygNames = async () => (await ygData()).en;
   // 区切りの揺れに強い照合用：長音「ー」とハイフン類（－ − - ‐ – — ―）を同じ文字として扱う
   //   例：DECK MAKER の「閃刀姫ーシズク」→ 公式「閃刀姫－シズク」。カタカナの長音も両側で同じ置き換えになるので、ふつうの名前は崩れない
   const ygLoose = s => ygNorm(s).replace(/[ー－−\-‐‑–—―ｰ]/g, '|');
-  let ygLooseMap = null, ygLooseSrc = null;
+  const ygLooseMaps = new WeakMap();
   const ygFind = (m, n) => {
     const en = m[ygNorm(n)]; if (en) return en;
-    if (ygLooseSrc !== m) { ygLooseSrc = m; ygLooseMap = {}; for (const k in m) { const lk = k.replace(/[ー－−\-‐‑–—―ｰ]/g, '|'); if (!(lk in ygLooseMap)) ygLooseMap[lk] = m[k]; } }
-    return ygLooseMap[ygLoose(n)];
+    let lm = ygLooseMaps.get(m);
+    if (!lm) { lm = {}; for (const k in m) { const lk = k.replace(/[ー－−\-‐‑–—―ｰ]/g, '|'); if (!(lk in lm)) lm[lk] = m[k]; } ygLooseMaps.set(m, lm); }
+    return lm[ygLoose(n)];
   };
   // untap 側が公式英語名と違う名前（有志翻訳）で登録しているカード
   const YG_ALIAS = {
@@ -333,6 +348,168 @@
     return { text: parts.join('\n\n'), missing, pairs, look: LOOK.yg };
   };
   const cnt = rows => rows.reduce((s, r) => s + Number(r[1]), 0);
+
+  /* ================= 遊戯王 → EDOPro・YGO Omega ================= */
+  // 出力は「Omega のコード」1つ：YGO Omega の Import でも、EDOPro のデッキ編集の Ctrl+V でも入る
+  //   （EDOPro は ydke:// と Omega のコードの両方を読む。deck_manager.cpp の ImportDeckBase64Omega）
+  //   形：[メイン+EXの枚数, サイドの枚数] + パスコード（32bit・リトルエンディアン）を raw deflate → Base64
+  // 予備に ydke://（メイン!EX!サイド!）と .ydk の保存も出す
+  // 絵違い：YGOPRODeck の card_images（パスコード）から選ぶ。画像は EDOPro が使う Project Ignis の画像サーバー
+  //   （そこに無い絵は EDOPro に無い可能性が高いので「EDOPro×」の印を付け、YGOPRODeck の画像で見せる）
+  const EDO_PIC = id => 'https://pics.projectignis.org:2096/pics/' + id + '.jpg';
+  const EDO_PIC2 = id => 'https://images.ygoprodeck.com/images/cards_small/' + id + '.jpg';
+  const EDO_ART = 'c2u-edo-art-v1'; // {基本のパスコード: 選んだ絵のパスコード}
+  const EDO_FIX = 'c2u-edo-fix-v1'; // {正規化した日本語名: パスコード}（見つからなかったカードに手で入れたもの）
+  const lsJson = k => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } };
+  const lsPut = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const edoArtSet = (base, id) => { const p = lsJson(EDO_ART); if (id === base) delete p[base]; else p[base] = id; lsPut(EDO_ART, p); };
+  const YPD = 'https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes&';
+  const ypdCard = d => ({ id: d.id, en: d.name, arts: [...new Set([d.id, ...(d.card_images || []).map(x => x.id)])], extra: /fusion|synchro|xyz|link/.test(d.frameType || '') });
+  // Konami ID → {id, en, arts, extra}（YGOPRODeck。30日キャッシュ。見つからなかった ID は null を1日だけ覚える）
+  const edoArts = async kids => {
+    const c = cacheGet('c2u-edo-arts-v2', 30 * DAY) || {};
+    const todo = [...new Set(kids.filter(k => k && !(k in c && (c[k] || Date.now() - (c._miss || 0) < DAY))))];
+    for (let i = 0; i < todo.length; i += 40) {
+      const part = todo.slice(i, i + 40);
+      try {
+        const r = await fetch(YPD + 'konami_id=' + part.join(','));
+        if (r.ok) for (const d of (await r.json()).data || []) { const k = d.misc_info && d.misc_info[0] && d.misc_info[0].konami_id; if (k) c[k] = ypdCard(d); }
+      } catch (e) {}
+      for (const k of part) if (!c[k]) { c[k] = null; c._miss = Date.now(); }
+    }
+    cacheSet('c2u-edo-arts-v2', c);
+    return c;
+  };
+  // yaml-yugi に無い新しいカード用：ygoresources（Konami のデータベースの写し）の日本語名 → Konami ID
+  const ygresIdx = async () => {
+    let m = cacheGet('c2u-ygres-ja-v1', 3 * DAY);
+    if (m) return m;
+    const r = await fetch('https://db.ygoresources.com/data/idx/card/name/ja');
+    if (!r.ok) return {};
+    m = {};
+    for (const [k, v] of Object.entries(await r.json())) { const n = ygNorm(k); if (!(n in m) && v && v[0]) m[n] = v[0]; }
+    cacheSet('c2u-ygres-ja-v1', m);
+    return m;
+  };
+  const edoB64 = bytes => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); };
+  const le32 = codes => new Uint8Array(new Uint32Array(codes).buffer);
+  // zones → rows:[{z, jp, q, kid, base, arts, en, extra}]、missing:[{z, jp, q}]
+  const edoResolve = async (zones, say) => {
+    const { ids } = await ygData(say), fix = lsJson(EDO_FIX);
+    const rows = [], wait = [];
+    for (const z of ['main', 'extra', 'side']) for (const [jp, q] of zones[z] || []) {
+      const r = { z, jp, q: Number(q) };
+      if (fix[ygNorm(jp)]) r.pw = Number(fix[ygNorm(jp)]);
+      else { const f = ygFind(ids, jp); if (f) { r.kid = f[0]; r.pw = f[1]; } }
+      if (!r.kid && !r.pw) wait.push(r);
+      rows.push(r);
+    }
+    if (wait.length) { // 新しいカード：ygoresources で Konami ID を探す
+      try { const idx = await ygresIdx(); for (const r of wait) r.kid = ygFind(idx, r.jp) || 0; } catch (e) {}
+    }
+    const arts = await edoArts(rows.filter(r => r.kid && !fix[ygNorm(r.jp)]).map(r => r.kid));
+    const byPw = rows.filter(r => r.pw && !(r.kid && arts[r.kid])).map(r => r.pw);
+    const pwInfo = {};
+    for (let i = 0; i < byPw.length; i += 40) {
+      try { const x = await fetch(YPD + 'id=' + [...new Set(byPw.slice(i, i + 40))].join(',')); if (x.ok) for (const d of (await x.json()).data || []) pwInfo[d.id] = ypdCard(d); } catch (e) {}
+    }
+    for (const r of rows) Object.assign(r, edoFill(r, (r.kid && arts[r.kid]) || pwInfo[r.pw] || null));
+    return { rows: rows.filter(r => r.base), missing: rows.filter(r => !r.base) };
+  };
+  const edoFill = (r, info) => {
+    const base = (info && info.id) || r.pw || 0;
+    return { base, arts: info ? info.arts : base ? [base] : [], en: info ? info.en : '', extra: info ? info.extra : r.z === 'extra' };
+  };
+  const edoLists = rows => {
+    const pref = lsJson(EDO_ART), code = r => { const p = Number(pref[r.base]); return p && r.arts.includes(p) ? p : r.base; };
+    // サイトの区分を使う。区分の無い貼り付け（z が main）は、融合・S・X・リンクを EX に振り分ける
+    const zone = r => r.z === 'side' ? 'side' : r.z === 'extra' || r.extra ? 'extra' : 'main';
+    const L = { main: [], extra: [], side: [] };
+    for (const r of rows) for (let i = 0; i < r.q; i++) L[zone(r)].push(code(r));
+    return L;
+  };
+  const edoOmega = async L => {
+    const all = [...L.main, ...L.extra, ...L.side], buf = new Uint8Array(2 + 4 * all.length);
+    buf[0] = L.main.length + L.extra.length; buf[1] = L.side.length; buf.set(le32(all), 2);
+    const z = new Uint8Array(await new Response(new Blob([buf]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+    return edoB64(z);
+  };
+  const edoYdke = L => 'ydke://' + ['main', 'extra', 'side'].map(z => edoB64(le32(L[z]))).join('!') + '!';
+  const edoYdk = L => ['#created by untapへ転送', '#main', ...L.main, '#extra', ...L.extra, '!side', ...L.side].join('\n') + '\n';
+  // パネルの中に EDOPro・Omega 用の結果（案内・見つからないカードの修正・絵違いの選択）を出す
+  const edoPanel = async (info, zones, title) => {
+    const { rows, missing } = await edoResolve(zones, t => (info.innerHTML = `<div style="font-size:12px;opacity:.8;margin-top:4px">${esc(t)}</div>`));
+    const copy = async () => { await copyText(await edoOmega(edoLists(rows))); };
+    await copy();
+    log('EDOPro/Omega コピー: ' + title + ' ' + rows.length + '種 見つからず' + missing.length);
+    const zn = { main: 'メイン', extra: 'EX', side: 'サイド' };
+    const render = () => {
+      const L = edoLists(rows), pref = lsJson(EDO_ART);
+      const alt = rows.filter((r, i) => r.arts.length > 1 && rows.findIndex(x => x.base === r.base) === i);
+      info.innerHTML =
+        `<div style="font-size:12px;margin-top:4px"><span style="color:#9be29b">EDOPro・Omega 用のコードをコピーしました</span>（メイン${L.main.length}・EX${L.extra.length}・サイド${L.side.length}）</div>` +
+        `<div style="font-size:12px;margin-top:6px;padding:6px;border-radius:6px;background:#16233a">` +
+        `<b>EDOPro</b>：「デッキ編集」で新しいデッキを作ってから <b>Ctrl+V</b>（今のデッキが置き換わります）<br><b>YGO Omega</b>：デッキ管理の「Import」</div>` +
+        (missing.length ? `<div style="color:#ffb454;font-size:12px;margin-top:6px">見つからず入っていないカード。カード左下の<b>8桁の数字（パスコード）</b>か英語名を入れて Enter（次からは自動）：` +
+          missing.map((r, i) => `<div style="margin-top:3px">${esc(r.jp)} ×${r.q}・${zn[r.z]}<input data-edo-fix="${i}" placeholder="例: 14558127" style="all:unset;box-sizing:border-box;width:100%;margin-top:2px;padding:2px 4px;background:#111;border:1px solid #555;border-radius:4px;color:#eee"></div>`).join('') + `</div>` : '') +
+        (alt.length ? `<div style="font-size:12px;margin-top:8px;border-top:1px dashed #333;padding-top:6px"><b>絵違いを選ぶ</b>（${alt.length} 種類）<span style="opacity:.7"> 押すとその絵でコピーし直します。選んだ絵はこのサイトのブラウザに覚えます</span></div>` +
+          alt.map(r => { const sel = r.arts.includes(Number(pref[r.base])) ? Number(pref[r.base]) : r.base; return `<div style="margin-top:6px"><div style="font-size:12px;opacity:.85">${esc(r.jp)} <span style="opacity:.6">×${r.q}・${zn[r.z]}</span></div>` +
+            `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">` +
+            r.arts.map((id, j) => `<span data-edo-base="${r.base}" data-edo-art="${id}" title="${j ? '絵違い ' + j : '通常'}（${id}）" style="position:relative;cursor:pointer;line-height:0"><img src="${EDO_PIC(id)}" loading="lazy" style="width:52px;height:75px;object-fit:cover;border-radius:3px;border:2px solid ${id === sel ? '#2f6fed' : 'transparent'};opacity:${id === sel ? 1 : .55}"></span>`).join('') +
+            `</div></div>`; }).join('') : '') +
+        `<div class="c2u-edo-out" style="font-size:12px;margin-top:6px"></div>` +
+        `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:4px"><a href="javascript:void(0)" data-edo-act="omega" style="color:#8ab4ff">もう一度コピー</a><a href="javascript:void(0)" data-edo-act="ydke" style="color:#8ab4ff">ydke でコピー</a><a href="javascript:void(0)" data-edo-act="ydk" style="color:#8ab4ff">.ydk を保存</a></div>`;
+      const out = m => { const o = info.querySelector('.c2u-edo-out'); if (o) o.innerHTML = `<span style="color:#9be29b">${m}</span>`; };
+      info.querySelectorAll('[data-edo-art] img').forEach(im => {
+        im.onerror = () => { im.onerror = null; im.src = EDO_PIC2(im.parentElement.dataset.edoArt); im.parentElement.insertAdjacentHTML('beforeend', '<span style="position:absolute;left:2px;bottom:3px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">EDOPro×</span>'); };
+      });
+      info.querySelectorAll('[data-edo-art]').forEach(el => el.onclick = async () => {
+        const base = Number(el.dataset.edoBase), r = rows.find(x => x.base === base);
+        edoArtSet(base, Number(el.dataset.edoArt)); await copy(); render(); out(`「${esc(r.jp)}」の絵を変えて、コピーし直しました`);
+      });
+      info.querySelectorAll('[data-edo-fix]').forEach(inp => inp.onkeydown = async ev => {
+        if (ev.key !== 'Enter' || !inp.value.trim()) return;
+        const v = inp.value.trim(), r = missing[Number(inp.dataset.edoFix)];
+        try {
+          const x = await fetch(YPD + (/^\d+$/.test(v) ? 'id=' + Number(v) : 'name=' + enc(v)));
+          const d = x.ok && ((await x.json()).data || [])[0];
+          if (!d) throw new Error('見つかりませんでした：' + v);
+          Object.assign(r, edoFill(r, ypdCard(d)));
+          const f = lsJson(EDO_FIX); f[ygNorm(r.jp)] = d.id; lsPut(EDO_FIX, f);
+          missing.splice(missing.indexOf(r), 1); rows.push(r);
+          await copy(); render(); out(`「${esc(r.jp)}」→ ${esc(d.name)} を入れて、コピーし直しました`);
+        } catch (e) { inp.style.borderColor = '#ff7b7b'; inp.value = ''; inp.placeholder = e.message; }
+      });
+      info.querySelectorAll('[data-edo-act]').forEach(a => a.onclick = async () => {
+        const L2 = edoLists(rows);
+        if (a.dataset.edoAct === 'omega') { await copy(); out('コピーしました（EDOPro は Ctrl+V、Omega は Import）'); }
+        if (a.dataset.edoAct === 'ydke') { await copyText(edoYdke(L2)); out('ydke:// でコピーしました（EDOPro で Ctrl+V）'); }
+        if (a.dataset.edoAct === 'ydk') {
+          const l = document.createElement('a'); l.href = URL.createObjectURL(new Blob([edoYdk(L2)], { type: 'text/plain' }));
+          l.download = String(title || 'deck').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60) + '.ydk'; document.body.appendChild(l); l.click(); l.remove();
+          out('.ydk を保存しました（EDOPro は deck フォルダへ）');
+        }
+      });
+    };
+    render();
+  };
+  // 文字のレシピ → zones（どのページでも使える「貼り付けて変換」用）
+  //   「3 青眼の白龍」「青眼の白龍 ×3」、EDOPro の書き出し（Main Deck: / Extra Deck: / Side Deck:）、見出し（エクストラ・サイド）に対応
+  const ygParseText = text => {
+    const z = { main: [], extra: [], side: [] };
+    let cur = 'main';
+    for (let l of String(text).split(/\r?\n/)) {
+      l = l.trim(); if (!l || /^\/\/c2u/.test(l)) continue;
+      if (/^(#?main|main deck|メイン|\/\/deck-1)/i.test(l)) { cur = 'main'; continue; }
+      if (/^(#?extra|extra deck|エクストラ|ＥＸ|EX\s*デッキ|\/\/deck-2)/i.test(l)) { cur = 'extra'; continue; }
+      if (/^(!?side|side deck|サイド|\/\/sideboard)/i.test(l)) { cur = 'side'; continue; }
+      if (/^(モンスター|魔法|罠|トラップ|#|\/\/)/.test(l)) continue;
+      const m = l.match(/^(\d+)\s*[x×枚]?\s+(.+)$/) || l.match(/^(.+?)\s*[x×]\s*(\d+)\s*枚?$/);
+      const [n, q] = m ? (/^\d+$/.test(m[1]) ? [m[2], m[1]] : [m[1], m[2]]) : [l, 1];
+      z[cur].push([n.trim(), Number(q)]);
+    }
+    return z;
+  };
 
   /* ================= デュエマ：日本語名 → 英語名（Duel Masters Wiki を検索して日本語名で照合） ================= */
   const dmNorm = s => String(s || '')
@@ -429,7 +606,7 @@
       } }];
     }
     const m = await ygNames();
-    return [{ title: h1, sub: `メイン${cnt(zones.main)}・EX${cnt(zones.extra)}・サイド${cnt(zones.side)}`, build: async () => ygBuild(zones, m) }];
+    return [{ title: h1, sub: `メイン${cnt(zones.main)}・EX${cnt(zones.extra)}・サイド${cnt(zones.side)}`, yg: zones, build: async () => ygBuild(zones, m) }];
   };
 
   /* ================= ヴァンガード：カード番号 → 英語名（Cardfight!! Vanguard Wiki のセット一覧・カードページ） ================= */
@@ -665,7 +842,43 @@
     const zones = { main: agg(vm.mainCards), extra: agg(vm.extraCards), side: agg(vm.sideCards) };
     if (!cnt(zones.main)) throw new Error('メインデッキが空です');
     const m = await ygNames();
-    return [{ title: 'DECK MAKER のデッキ', sub: `メイン${cnt(zones.main)}・EX${cnt(zones.extra)}・サイド${cnt(zones.side)}`, build: async () => ygBuild(zones, m) }];
+    return [{ title: 'DECK MAKER のデッキ', sub: `メイン${cnt(zones.main)}・EX${cnt(zones.extra)}・サイド${cnt(zones.side)}`, yg: zones, build: async () => ygBuild(zones, m) }];
+  };
+
+  /* ---------- gachi-matome.com（ガチまとめ：デッキレシピ詳細・記事に埋め込まれたデッキ） ---------- */
+  // ページにはカード画像しか無いので、DECK MAKER の公開 API からデッキ（main_card_id の並び）とカード名を引く
+  const GM_DECK = 'https://ockvhiwjud.execute-api.ap-northeast-1.amazonaws.com/prod/proxy/yg-decks/public/';
+  const GM_CARDS = 'https://d23r8jlqp3e2gc.cloudfront.net/api/v1/yg/cards?main-card-ids=';
+  const gachiMatome = async () => {
+    const idRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+    const ids = [...new Set([
+      (new URLSearchParams(location.search).get('tcgrevo_deck_maker_deck_id') || ''),
+      ...[...document.querySelectorAll('[id^="pills-maindeck-"]')].map(e => e.id.slice('pills-maindeck-'.length)),
+    ].filter(x => idRe.test(x)))];
+    if (/(-dm|-rd)\/?$/.test(location.pathname) || /deckrecipe-detail-(dm|yugioh-rd)/.test(location.pathname)) throw new Error('ガチまとめは遊戯王（OCG）のデッキに対応しています（デュエマ・ラッシュデュエルは未対応）');
+    if (!ids.length) throw new Error('このページにデッキが見つかりませんでした（ガチまとめの遊戯王のデッキレシピ詳細、またはデッキが載った記事で実行してください）');
+    status('ガチまとめのデッキを読み込み中…');
+    const decks = [];
+    for (const id of ids) {
+      const r = await fetch(GM_DECK + id);
+      if (!r.ok) continue;
+      const d = (await r.json()).ygDeck;
+      if (d) decks.push(d);
+    }
+    if (!decks.length) throw new Error('デッキの中身を読み込めませんでした（遊戯王のデッキか、ページを開き直して確かめてください）');
+    const allIds = [...new Set([].concat(...decks.map(d => ['main_cards', 'extra_cards', 'side_cards'].map(k => (d[k] || []).map(c => c.main_card_id)))).flat())];
+    const nm = {};
+    for (let i = 0; i < allIds.length; i += 80) {
+      const r = await fetch(GM_CARDS + allIds.slice(i, i + 80).join(','));
+      if (r.ok) for (const c of await r.json()) nm[c.main_card_id] = c.name;
+    }
+    const m = await ygNames();
+    const agg = list => { const mm = new Map(); for (const c of list || []) { const n = nm[c.main_card_id] || ('ID' + c.main_card_id); mm.set(n, (mm.get(n) || 0) + 1); } return [...mm]; };
+    return decks.map(d => {
+      const zones = { main: agg(d.main_cards), extra: agg(d.extra_cards), side: agg(d.side_cards) };
+      const pane = () => document.getElementById('pills-maindeck-' + d.yg_deck_id);
+      return { title: (d.name || 'ガチまとめのデッキ') + (d.author_display_name ? '（' + d.author_display_name + '）' : ''), sub: `メイン${cnt(zones.main)}・EX${cnt(zones.extra)}・サイド${cnt(zones.side)}`, yg: zones, el: decks.length > 1 && pane() ? pane : null, build: async () => ygBuild(zones, m) };
+    });
   };
 
   /* ================= 実行 ================= */
@@ -1306,15 +1519,32 @@
     const site = /cardrush\.media$/.test(h) ? cardrush
       : /tcg-portal\.jp$/.test(h) ? tcgPortal
       : /deck-maker\.com$/.test(h) ? deckMaker
+      : /gachi-matome\.com$/.test(h) ? gachiMatome
       : /pokemon-card\.com$/.test(h) ? pokeOfficial
       : /cf-vanguard\.com$/.test(h) ? vgOfficial
       : /decklog\.bushiroad\.com$/.test(h) ? deckLog
       : /ws-tcg\.com$/.test(h) ? wsOfficial : null;
-    if (!site) throw new Error('対応サイト（untap.in のデッキ画面では、コピーしたデッキの自動取り込みと履歴）：cardrush（ワンピース・ポケモン）／ TCG PORTAL（遊戯王・ワンピース・ポケモン・デュエマ）／ DECK MAKER（遊戯王・デュエマ）／ ポケカ公式のデッキ表示ページ ／ ヴァンガード公式の入賞者デッキレシピ・DECK LOG ／ ヴァイス公式のデッキレシピ');
+    if (!site) {
+      // 対応していないページ：遊戯王のレシピを貼り付けて EDOPro・Omega 用に変換できる
+      body.innerHTML = `<div style="font-size:12px;opacity:.8">${esc('対応サイト（untap.in のデッキ画面では、コピーしたデッキの自動取り込みと履歴）：cardrush（ワンピース・ポケモン）／ TCG PORTAL（遊戯王・ワンピース・ポケモン・デュエマ）／ DECK MAKER（遊戯王・デュエマ）／ ガチまとめ（遊戯王）／ ポケカ公式のデッキ表示ページ ／ ヴァンガード公式の入賞者デッキレシピ・DECK LOG ／ ヴァイス公式のデッキレシピ')}</div>` +
+        `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #333"><b>遊戯王のレシピを貼って EDOPro・Omega 用に変換</b>` +
+        `<div style="font-size:12px;opacity:.7">「3 青眼の白龍」「青眼の白龍 ×3」の行。「エクストラ」「サイド」の見出しで区分。EDOPro の書き出し（Main Deck: …）もそのまま貼れます</div>` +
+        `<textarea placeholder="3 灰流うらら&#10;エクストラ&#10;1 アクセスコード・トーカー&#10;サイド&#10;2 増殖するG" style="box-sizing:border-box;width:100%;height:140px;margin-top:4px;background:#111;color:#eee;border:1px solid #444;border-radius:6px;padding:6px;font:12px/1.4 ui-monospace,Consolas,monospace"></textarea>` +
+        `<button data-paste style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 12px;margin-top:4px">変換してコピー</button><div class="c2u-info"></div></div>`;
+      const pb = body.querySelector('[data-paste]'), pinfo = body.querySelector('.c2u-info');
+      pb.onclick = async () => {
+        const z = ygParseText(body.querySelector('textarea').value);
+        if (!cnt(z.main) && !cnt(z.extra) && !cnt(z.side)) { pinfo.innerHTML = '<div style="color:#ff7b7b;font-size:12px">レシピを貼ってください</div>'; return; }
+        pb.textContent = '変換中…';
+        try { await edoPanel(pinfo, z, '貼り付けたデッキ'); } catch (e) { pinfo.innerHTML = errHtml(e); }
+        pb.textContent = '変換してコピー';
+      };
+      return;
+    }
     log('開始: ' + location.hostname);
     const decks = await site();
     log('デッキ ' + decks.length + ' 件: ' + decks.map(d => d.title + '（' + d.sub + '）').join(' / ').slice(0, 400));
-    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「コピー」→ untap で取り込む（英語名データに無いカードは番号で探します）→ 入らなかったカードだけ依頼。中身を確かめたいときは「開く」' : '「コピー」→ untap の Paste Deck に貼り付け'}</div>`;
+    body.innerHTML = `<div style="opacity:.75;margin-bottom:8px">${decks.some(d => d.ws) ? '「コピー」→ untap で取り込む（英語名データに無いカードは番号で探します）→ 入らなかったカードだけ依頼。中身を確かめたいときは「開く」' : '「コピー」→ untap の Paste Deck に貼り付け' + (decks.some(d => d.yg) ? '。「EDOPro・Omega」→ EDOPro はデッキ編集で Ctrl+V、Omega は Import' : '')}</div>`;
     for (const d of decks) {
       const box = document.createElement('div');
       box.style.cssText = 'border:1px solid #3a3d44;border-radius:8px;padding:8px;margin-bottom:8px';
@@ -1322,10 +1552,17 @@
         `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">` +
         `<div${d.el ? ' data-jump title="ページのこのデッキの場所へ移動" style="cursor:pointer"' : ''}><b${d.el ? ' style="text-decoration:underline dotted"' : ''}>${esc(d.title)}</b><div style="opacity:.7;font-size:12px">${esc(d.sub)}${d.el ? ' <span style="opacity:.8">↓ 場所へ</span>' : ''}</div></div>` +
         `<span style="display:flex;gap:6px">` + (d.ws ? `<button data-qcopy style="all:unset;cursor:pointer;background:#2f6fed;color:#fff;border-radius:6px;padding:4px 12px;white-space:nowrap">コピー</button>` : '') +
-        `<button data-main style="all:unset;cursor:pointer;${d.ws ? 'border:1px solid #2f6fed;color:#8ab4ff' : 'background:#2f6fed;color:#fff'};border-radius:6px;padding:4px 12px;white-space:nowrap">${d.ws ? '開く' : 'コピー'}</button></span></div>` +
+        `<button data-main style="all:unset;cursor:pointer;${d.ws ? 'border:1px solid #2f6fed;color:#8ab4ff' : 'background:#2f6fed;color:#fff'};border-radius:6px;padding:4px 12px;white-space:nowrap">${d.ws ? '開く' : 'コピー'}</button>` + (d.yg ? `<button data-edo title="EDOPro（Ctrl+V）と YGO Omega（Import）で取り込めるコードをコピー。絵違いも選べます" style="all:unset;cursor:pointer;border:1px solid #2f6fed;color:#8ab4ff;border-radius:6px;padding:4px 10px;white-space:nowrap">EDOPro・Omega</button>` : '') + `</span></div>` +
         `<div class="c2u-info"></div>`;
       const btn = box.querySelector('[data-main]'), info = box.querySelector('.c2u-info'), qb = box.querySelector('[data-qcopy]');
       const jb = box.querySelector('[data-jump]');
+      const eb = box.querySelector('[data-edo]');
+      if (eb) eb.onclick = async () => {
+        eb.textContent = '準備中…';
+        try { await edoPanel(info, d.yg, d.title); eb.textContent = 'コピーしました'; }
+        catch (e) { info.innerHTML = errHtml(e); }
+        setTimeout(() => (eb.textContent = 'EDOPro・Omega'), 1500);
+      };
       if (jb) jb.onclick = () => {
         const e = d.el();
         if (!e) { jb.querySelector('div').insertAdjacentHTML('beforeend', ' <span style="color:#ffb454">（場所が見つかりませんでした）</span>'); return; }

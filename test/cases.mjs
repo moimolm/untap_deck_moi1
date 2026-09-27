@@ -19,15 +19,43 @@ const OP_API = {
 };
 const YG_API = {
   'yaml-yugi/cards.json': () => [
-    { name: { ja: '<ruby>灰流<rt>はる</rt></ruby>うらら', en: 'Ash Blossom & Joyous Spring' } },
-    { name: { ja: '増殖するＧ', en: 'Maxx "C"' } },
-    { name: { ja: '無限泡影', en: 'Infinite Impermanence' } },
-    { name: { ja: 'アクセスコード・トーカー', en: 'Accesscode Talker' } },
+    { konami_id: 12950, password: 14558127, name: { ja: '<ruby>灰流<rt>はる</rt></ruby>うらら', en: 'Ash Blossom & Joyous Spring' } },
+    { konami_id: 12308, password: 23434538, name: { ja: '増殖するＧ', en: 'Maxx "C"' } },
+    { konami_id: 13631, password: 10045474, name: { ja: '無限泡影', en: 'Infinite Impermanence' } },
+    { konami_id: 14007, password: 86066372, name: { ja: 'アクセスコード・トーカー', en: 'Accesscode Talker' } },
+    { konami_id: 99001, password: 99000001, name: { ja: 'ＯＣＧだけのカード' } },
     { name: { ja: '有限と無限のアルス・マグナ', en: 'Ars Magna the Finite and the Infinite' } },
     { name: { ja: '閃刀姫－シズク', en: 'Sky Striker Ace - Shizuku' } },
     { name: { ja: 'ブルーアイズ・ホワイト・ドラゴン', en: 'Blue-Eyes White Dragon' } },
   ],
 };
+// YGOPRODeck（パスコードと絵違い）の見本。konami_id か id で引く
+const YPD_DB = [
+  { id: 14558127, kid: 12950, name: 'Ash Blossom & Joyous Spring', frameType: 'effect', arts: [14558127, 14558128] },
+  { id: 23434538, kid: 12308, name: 'Maxx "C"', frameType: 'effect', arts: [23434538] },
+  { id: 10045474, kid: 13631, name: 'Infinite Impermanence', frameType: 'trap', arts: [10045474, 10045475] },
+  { id: 86066372, kid: 14007, name: 'Accesscode Talker', frameType: 'link', arts: [86066372] },
+  { id: 55555555, kid: 20001, name: 'Brand New Card', frameType: 'effect', arts: [55555555] },
+];
+const YPD_API = {
+  'db.ygoprodeck.com': u => {
+    const q = u.searchParams, k = (q.get('konami_id') || '').split(',').map(Number), id = (q.get('id') || '').split(',').map(Number), nm = q.get('name');
+    const hit = YPD_DB.filter(c => k.includes(c.kid) || id.includes(c.id) || c.name === nm);
+    return { data: hit.map(c => ({ id: c.id, name: c.name, frameType: c.frameType, card_images: c.arts.map(a => ({ id: a })), misc_info: [{ konami_id: c.kid }] })) };
+  },
+  'db.ygoresources.com/data/idx/card/name/ja': () => ({ '出たばかりのカード': [20001] }),
+};
+const YG_EDO_API = { ...YG_API, ...YPD_API };
+const edoSeen = {};
+// Omega のコード → 中身（EDOPro も同じ形を読む）。ydke はそのまま分解
+const decodeEdo = () => (async () => {
+  const b = Uint8Array.from(atob(window.__clip), c => c.charCodeAt(0));
+  const raw = new Uint8Array(await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  const v = new DataView(raw.buffer), codes = [];
+  for (let i = 2; i < raw.length; i += 4) codes.push(v.getUint32(i, true));
+  return `メイン+EX ${raw[0]} 枚・サイド ${raw[1]} 枚\n` + codes.join(' ');
+})();
+
 const DM_WIKI = {
   'Deadly Fighter Braid Claw': ["{{Ruby|凶|きょう}}{{Ruby|戦|せん}}{{Ruby|士|し}}ブレイズ・クロー ''(Berserker Blaze Claw)''"],
   'Great Sonic': ['グレイト“{{Ruby|S-駆|ソニック}}”'],
@@ -169,6 +197,53 @@ export default [
       window.$nuxt={$store:{state:{yg:{cards:{a:{mainCardId:1,name:'灰流うらら'},b:{mainCardId:2,name:'増殖するG'},c:{mainCardId:3,name:'アクセスコード・トーカー'},d:{mainCardId:4,name:'閃刀姫ーシズク'},e:{mainCardId:5,name:'ブルーアイズ・ホワイト・ドラゴン'}}},dm:{cards:{}}}}};
       document.querySelector('.DeckArea').__vue__={mainCards:[...Array(20)].map(()=>({mainCardId:1})).concat([...Array(20)].map(()=>({mainCardId:2}))),extraCards:[{mainCardId:3}],sideCards:[{mainCardId:4},{mainCardId:5}]};
     </script>`,
+  },
+  {
+    name: 'yg-gachimatome', url: 'https://gachi-matome.com/deckrecipe-detail-yugioh/?tcgrevo_deck_maker_deck_id=4b8e5784-0321-402b-8a3a-747dae934640',
+    api: {
+      ...YG_API,
+      'amazonaws.com/prod/proxy/yg-decks/public/4b8e5784': () => ({ ygDeck: { yg_deck_id: '4b8e5784-0321-402b-8a3a-747dae934640', name: 'ウィッチクラフト', author_display_name: 'KARE',
+        main_cards: [1, 1, 1, 2, 2, 3].map(main_card_id => ({ main_card_id })), extra_cards: [{ main_card_id: 4 }], side_cards: [{ main_card_id: 3 }, { main_card_id: 9 }] } }),
+      'cloudfront.net/api/v1/yg/cards': () => [{ main_card_id: 1, name: '灰流うらら' }, { main_card_id: 2, name: '増殖するG' }, { main_card_id: 3, name: '無限泡影' }, { main_card_id: 4, name: 'アクセスコード・トーカー' }, { main_card_id: 9, name: '謎のカード' }],
+    },
+    html: `<div class="tab-content bg_main"><div class="tab-pane active" id="pills-maindeck-4b8e5784-0321-402b-8a3a-747dae934640"></div></div>`,
+  },
+  {
+    name: 'yg-edo', url: 'https://tcg-portal.jp/yugioh/tournament-results/x', api: YG_EDO_API,
+    html: `<h1>テスト遊戯王</h1><main><h3>メインデッキ</h3>${tbl([[3, '灰流うらら'], [2, '増殖するG'], [1, 'ＯＣＧだけのカード'], [1, '出たばかりのカード'], [1, '謎の魔法']])}<h3>EXデッキ</h3>${tbl([[1, 'アクセスコード・トーカー']])}<h3>サイドデッキ</h3>${tbl([[2, '無限泡影']])}</main>`,
+    steps: async p => {
+      await p.click('[data-edo]');
+      await p.waitForFunction(() => window.__clip, null, { timeout: 30000 });
+      await p.waitForTimeout(200);
+      edoSeen.first = await p.evaluate(decodeEdo);
+      await p.click('[data-edo-art="14558128"]');            // うららの絵違いを選ぶ
+      await p.waitForTimeout(300);
+      edoSeen.second = await p.evaluate(decodeEdo);
+      await p.fill('[data-edo-fix="0"]', '55555555');        // 見つからないカードにパスコードを入れる
+      await p.press('[data-edo-fix="0"]', 'Enter');
+      await p.waitForTimeout(300);
+      edoSeen.third = await p.evaluate(decodeEdo);
+      await p.click('[data-edo-act="ydke"]');
+      await p.waitForTimeout(200);
+    },
+    result: async p => [
+      '=== 最初のコード ===', edoSeen.first,
+      '=== うららの絵を変えたあと ===', edoSeen.second,
+      '=== 謎の魔法 に 55555555 を入れたあと ===', edoSeen.third,
+      '=== ydke ===', await p.evaluate(() => window.__clip),
+      '=== 表示 ===', await p.innerText('#c2u-panel .c2u-info'),
+    ].join('\n'),
+  },
+  {
+    name: 'yg-paste', url: 'https://example.com/', api: YG_EDO_API,
+    html: '<p>関係ないページ</p>',
+    steps: async p => {
+      await p.fill('#c2u-body textarea', 'Main Deck:\n3 灰流うらら\n2 増殖するG\n\nExtra Deck:\n1 アクセスコード・トーカー\n\nSide Deck:\n1 無限泡影');
+      await p.click('[data-paste]');
+      await p.waitForFunction(() => window.__clip, null, { timeout: 30000 });
+      await p.waitForTimeout(200);
+    },
+    result: async p => ['=== コード ===', await p.evaluate(decodeEdo), '=== 表示 ===', await p.innerText('#c2u-panel .c2u-info')].join('\n'),
   },
   {
     name: 'pk-tcgportal', url: 'https://tcg-portal.jp/pokemon/tournament-results/x',
