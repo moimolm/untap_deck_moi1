@@ -363,8 +363,14 @@
   //   （そこに無い絵は EDOPro に無い可能性が高いので「EDOPro×」の印を付け、YGOPRODeck の画像で見せる）
   const EDO_PIC = id => 'https://pics.projectignis.org:2096/pics/' + id + '.jpg';
   const EDO_PIC2 = id => 'https://images.ygoprodeck.com/images/cards_small/' + id + '.jpg';
-  // Yugipedia の画像（yaml-yugi の images の順＝絵の順。絵違いのパスコードは多くが「基本＋1、＋2…」）
-  const EDO_PIC3 = (r, id) => { const f = r && r.imgs && r.imgs[id - r.base]; return f && id - r.base > 0 && id - r.base < 100 ? 'https://yugipedia.com/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=120' : ''; };
+  // Yugipedia の画像（yaml-yugi の images の順＝絵の順）。絵違いのパスコードは基本の少し後ろに並ぶ（番号が飛ぶこともある）ので、
+  //   基本より後ろで近い番号を小さい順に並べた何番目か → images の何番目か、で対応させる
+  const EDO_PIC3 = (r, id) => {
+    if (!r || !r.imgs) return '';
+    const near = r.arts.filter(x => x > r.base && x - r.base < 100).sort((a, b) => a - b), i = near.indexOf(id) + 1;
+    const f = i > 0 && r.imgs[i];
+    return f ? 'https://yugipedia.com/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=120' : '';
+  };
   // YGO Omega の絵違い（Omega 本体のカードデータから tools/omega-arts.py で作る。YGOPRODeck に無い絵違いもある）
   const OMEGA_ARTS = 'https://moimolm.github.io/untap_deck_moi1/data/omega-arts.json';
   let omegaMem = null;
