@@ -45,6 +45,7 @@ const YPD_API = {
     return { data: hit.map(c => ({ id: c.id, name: c.name, frameType: c.frameType, card_images: c.arts.map(a => ({ id: a })), misc_info: [{ konami_id: c.kid }] })) };
   },
   'db.ygoresources.com/data/idx/card/name/ja': () => ({ '出たばかりのカード': [20001] }),
+  'data/omega-arts.json': () => ({ arts: { 14558127: [14558128, 14558129] } }), // Omega だけの絵違い 14558129
 };
 const YG_EDO_API = { ...YG_API, ...YPD_API };
 const edoSeen = {};
@@ -217,7 +218,7 @@ export default [
       await p.waitForFunction(() => window.__clip, null, { timeout: 30000 });
       await p.waitForTimeout(200);
       edoSeen.first = await p.evaluate(decodeEdo);
-      await p.click('[data-edo-art="14558128"]');            // うららの絵違いを選ぶ
+      await p.click('[data-edo-art="14558129"]');            // うららの絵違い（Omega だけにある絵）を選ぶ
       await p.waitForTimeout(300);
       edoSeen.second = await p.evaluate(decodeEdo);
       await p.fill('[data-edo-fix="0"]', '55555555');        // 見つからないカードにパスコードを入れる
@@ -229,7 +230,7 @@ export default [
     },
     result: async p => [
       '=== 最初のコード ===', edoSeen.first,
-      '=== うららの絵を変えたあと ===', edoSeen.second,
+      '=== うららの絵を Omega だけの絵に変えたあと ===', edoSeen.second,
       '=== 謎の魔法 に 55555555 を入れたあと ===', edoSeen.third,
       '=== ydke ===', await p.evaluate(() => window.__clip),
       '=== 表示 ===', await p.innerText('#c2u-panel .c2u-info'),

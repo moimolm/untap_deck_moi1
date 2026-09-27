@@ -2,6 +2,10 @@
 
 新しい順。`src/deck2untap.js` の `C2U_VER` を上げたら、ここに1行足す（パネル右上に出る版番号と同じ）。
 
+## v35
+- **YGO Omega の絵違いも選べるように**（例：灰流うららは Omega だと3種類）。Omega 本体のカードデータから作った一覧 `data/omega-arts.json` を読み、YGOPRODeck の絵違いと合わせて並べる
+- 片方のソフトに無い絵には「Omega×」「EDOPro×」の印。画像が見つからない Omega だけの絵は「画像なし」のカードで出す（選べば Omega ではその絵で入る）
+
 ## v34
 - **遊戯王：EDOPro・YGO Omega に取り込めるように**。デッキの「EDOPro・Omega」ボタンで Omega のコードをコピー。EDOPro はデッキ編集で Ctrl+V、Omega はデッキ管理の Import（EDOPro も Omega のコードを読めるので1つで両方に入る）。予備に ydke:// のコピーと .ydk の保存
 - **絵違いを選べる**：絵違いのあるカードは画像が並び、押すとその絵でコピーし直す。選んだ絵はブラウザに覚える。画像は EDOPro の画像サーバーから出し、そこに無い絵には「EDOPro×」の印

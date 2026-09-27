@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v34';
+  const C2U_VER = 'v35';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -361,6 +361,18 @@
   //   （そこに無い絵は EDOPro に無い可能性が高いので「EDOPro×」の印を付け、YGOPRODeck の画像で見せる）
   const EDO_PIC = id => 'https://pics.projectignis.org:2096/pics/' + id + '.jpg';
   const EDO_PIC2 = id => 'https://images.ygoprodeck.com/images/cards_small/' + id + '.jpg';
+  // YGO Omega の絵違い（Omega 本体のカードデータから tools/omega-arts.py で作る。YGOPRODeck に無い絵違いもある）
+  const OMEGA_ARTS = 'https://moimolm.github.io/untap_deck_moi1/data/omega-arts.json';
+  let omegaMem = null;
+  const omegaArts = async () => {
+    if (omegaMem) return omegaMem;
+    let m = cacheGet('c2u-omega-arts-v1', DAY);
+    if (!m) {
+      try { const r = await fetch(OMEGA_ARTS + '?t=' + Math.floor(Date.now() / 36e5)); m = r.ok ? ((await r.json()).arts || {}) : null; } catch (e) { m = null; }
+      if (m) cacheSet('c2u-omega-arts-v1', m);
+    }
+    return (omegaMem = m || {});
+  };
   const EDO_ART = 'c2u-edo-art-v1'; // {基本のパスコード: 選んだ絵のパスコード}
   const EDO_FIX = 'c2u-edo-fix-v1'; // {正規化した日本語名: パスコード}（見つからなかったカードに手で入れたもの）
   const lsJson = k => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } };
@@ -417,11 +429,18 @@
       try { const x = await fetch(YPD + 'id=' + [...new Set(byPw.slice(i, i + 40))].join(',')); if (x.ok) for (const d of (await x.json()).data || []) pwInfo[d.id] = ypdCard(d); } catch (e) {}
     }
     for (const r of rows) Object.assign(r, edoFill(r, (r.kid && arts[r.kid]) || pwInfo[r.pw] || null));
+    // Omega の絵違いを足す（YGOPRODeck に無い絵もある）。どちらのソフトにあるかは印で見せる
+    const om = await omegaArts(), hasOm = Object.keys(om).length > 0;
+    for (const r of rows) if (r.base) {
+      const o = om[r.base] || [];
+      r.arts = [...new Set([...r.arts, ...o])];
+      r.om = hasOm ? new Set([r.base, ...o]) : null;
+    }
     return { rows: rows.filter(r => r.base), missing: rows.filter(r => !r.base) };
   };
   const edoFill = (r, info) => {
     const base = (info && info.id) || r.pw || 0;
-    return { base, arts: info ? info.arts : base ? [base] : [], en: info ? info.en : '', extra: info ? info.extra : r.z === 'extra' };
+    return { base, om: null, arts: info ? info.arts : base ? [base] : [], en: info ? info.en : '', extra: info ? info.extra : r.z === 'extra' };
   };
   const edoLists = rows => {
     const pref = lsJson(EDO_ART), code = r => { const p = Number(pref[r.base]); return p && r.arts.includes(p) ? p : r.base; };
@@ -455,16 +474,24 @@
         `<b>EDOPro</b>：「デッキ編集」で新しいデッキを作ってから <b>Ctrl+V</b>（今のデッキが置き換わります）<br><b>YGO Omega</b>：デッキ管理の「Import」</div>` +
         (missing.length ? `<div style="color:#ffb454;font-size:12px;margin-top:6px">見つからず入っていないカード。カード左下の<b>8桁の数字（パスコード）</b>か英語名を入れて Enter（次からは自動）：` +
           missing.map((r, i) => `<div style="margin-top:3px">${esc(r.jp)} ×${r.q}・${zn[r.z]}<input data-edo-fix="${i}" placeholder="例: 14558127" style="all:unset;box-sizing:border-box;width:100%;margin-top:2px;padding:2px 4px;background:#111;border:1px solid #555;border-radius:4px;color:#eee"></div>`).join('') + `</div>` : '') +
-        (alt.length ? `<div style="font-size:12px;margin-top:8px;border-top:1px dashed #333;padding-top:6px"><b>絵違いを選ぶ</b>（${alt.length} 種類）<span style="opacity:.7"> 押すとその絵でコピーし直します。選んだ絵はこのサイトのブラウザに覚えます</span></div>` +
+        (alt.length ? `<div style="font-size:12px;margin-top:8px;border-top:1px dashed #333;padding-top:6px"><b>絵違いを選ぶ</b>（${alt.length} 種類）<span style="opacity:.7"> 押すとその絵でコピーし直します。選んだ絵はこのサイトのブラウザに覚えます。「Omega×」「EDOPro×」はそのソフトに無い絵（入れると通常の絵になるか、入りません）</span></div>` +
           alt.map(r => { const sel = r.arts.includes(Number(pref[r.base])) ? Number(pref[r.base]) : r.base; return `<div style="margin-top:6px"><div style="font-size:12px;opacity:.85">${esc(r.jp)} <span style="opacity:.6">×${r.q}・${zn[r.z]}</span></div>` +
             `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">` +
-            r.arts.map((id, j) => `<span data-edo-base="${r.base}" data-edo-art="${id}" title="${j ? '絵違い ' + j : '通常'}（${id}）" style="position:relative;cursor:pointer;line-height:0"><img src="${EDO_PIC(id)}" loading="lazy" style="width:52px;height:75px;object-fit:cover;border-radius:3px;border:2px solid ${id === sel ? '#2f6fed' : 'transparent'};opacity:${id === sel ? 1 : .55}"></span>`).join('') +
+            r.arts.map((id, j) => `<span data-edo-base="${r.base}" data-edo-art="${id}" title="${j ? '絵違い ' + j : '通常'}（${id}）" style="position:relative;display:inline-block;cursor:pointer;line-height:0;width:56px;height:79px;box-sizing:border-box;border-radius:4px;border:2px solid ${id === sel ? '#2f6fed' : 'transparent'};opacity:${id === sel ? 1 : .6}"><img src="${EDO_PIC(id)}" loading="lazy" style="width:52px;height:75px;object-fit:cover;border-radius:3px">` +
+              (r.om && !r.om.has(id) ? '<span style="position:absolute;right:1px;top:2px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">Omega×</span>' : '') + `</span>`).join('') +
             `</div></div>`; }).join('') : '') +
         `<div class="c2u-edo-out" style="font-size:12px;margin-top:6px"></div>` +
         `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:4px"><a href="javascript:void(0)" data-edo-act="omega" style="color:#8ab4ff">もう一度コピー</a><a href="javascript:void(0)" data-edo-act="ydke" style="color:#8ab4ff">ydke でコピー</a><a href="javascript:void(0)" data-edo-act="ydk" style="color:#8ab4ff">.ydk を保存</a></div>`;
       const out = m => { const o = info.querySelector('.c2u-edo-out'); if (o) o.innerHTML = `<span style="color:#9be29b">${m}</span>`; };
       info.querySelectorAll('[data-edo-art] img').forEach(im => {
-        im.onerror = () => { im.onerror = null; im.src = EDO_PIC2(im.parentElement.dataset.edoArt); im.parentElement.insertAdjacentHTML('beforeend', '<span style="position:absolute;left:2px;bottom:3px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">EDOPro×</span>'); };
+        // EDOPro の画像サーバーに無い → EDOPro に無い絵。YGOPRODeck の画像で見せ、それも無ければ（Omega だけの絵など）文字で見せる
+        const tile = im.parentElement, id = tile.dataset.edoArt;
+        const badge = () => tile.insertAdjacentHTML('beforeend', '<span style="position:absolute;left:1px;bottom:2px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">EDOPro×</span>');
+        im.onerror = () => {
+          badge();
+          im.onerror = () => { im.remove(); tile.insertAdjacentHTML('afterbegin', `<span style="display:flex;width:52px;height:75px;align-items:center;justify-content:center;text-align:center;font-size:10px;line-height:1.3;background:#2a2d35;border-radius:3px;color:#ccc">画像なし<br>${esc(tile.title.split('（')[0])}</span>`); };
+          im.src = EDO_PIC2(id);
+        };
       });
       info.querySelectorAll('[data-edo-art]').forEach(el => el.onclick = async () => {
         const base = Number(el.dataset.edoBase), r = rows.find(x => x.base === base);

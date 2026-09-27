@@ -13,6 +13,7 @@
 | `ws-names.json` | ヴァイスの英語名データ（番号 → untap の登録名）。**登録担当のルーティンが自動でコミットする**ので手で上げない。名前は untap.in の登録名、または公式の日本語からの自訳 |
 | `src/deck2untap.js` | 本体の元のソース（読みやすい版）。修正はここに入れる |
 | `src/loader.js` | ブックマークに登録する短いコード（`d2u.js` を読み込むだけ） |
+| `data/omega-arts.json` | YGO Omega の絵違いの一覧（`tools/omega-arts.py` で Omega 本体から作る） |
 | `data/pokemon-jp-en.json` | ポケモンの日本語名→英語名の辞書（1747件、2026/9 時点）。組み立て時に圧縮して埋め込む |
 | `tools/build.mjs` | 組み立てスクリプト |
 | `docs/registration-guide.md` | 未登録カードを soogoo で untap に登録する手順（登録担当チャット向け） |
@@ -66,6 +67,8 @@ npm test             # 見本どおりか確認
   - 予備：`ydke://メイン!EX!サイド!`（各部分はパスコードを並べて Base64）と `.ydk` の保存
 - パスコード：yaml-yugi（日本語名 → Konami ID・パスコード）→ YGOPRODeck（`konami_id` で引き、`card_images` が絵違い）。yaml-yugi に無い新しいカードは ygoresources の日本語名索引で Konami ID を探す
 - 絵違いの画像は EDOPro が使う Project Ignis の画像サーバー（`pics.projectignis.org:2096/pics/<パスコード>.jpg`）。読めない絵は YGOPRODeck の画像にして「EDOPro×」
+- Omega にだけある絵違い（YGOPRODeck に無いもの）は `data/omega-arts.json`（基本のパスコード → 絵違いのパスコード）。Omega 本体のカードデータ（`YGO Omega_Data/Files/Bundles/db`・中身は SQLite）から `python tools/omega-arts.py "G:/YGO Omega"` で作り直してコミットする（Omega の更新で絵違いが増えたとき）。本体は Pages から読み、1日キャッシュ
+- 片方のソフトに無い絵には「Omega×」（omega-arts.json に無い）・「EDOPro×」（Project Ignis の画像サーバーに無い）の印
 - 覚えるもの（サイトごとのブラウザ）：`c2u-edo-art-v1`（選んだ絵）・`c2u-edo-fix-v1`（手で入れたパスコード）
 
 ## untap の貼り付け形式（調べて分かったこと）
