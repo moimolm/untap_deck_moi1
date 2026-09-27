@@ -211,6 +211,16 @@ export default [
     html: `<div class="tab-content bg_main"><div class="tab-pane active" id="pills-maindeck-4b8e5784-0321-402b-8a3a-747dae934640"></div></div>`,
   },
   {
+    // デッキ ID が UUID でない（20文字の英数字）ページ。タブ見出しの pills-maindeck-tab-<ID> は読まない
+    name: 'yg-gachimatome-shortid', url: 'https://gachi-matome.com/deckrecipe-detail-yugioh/?tcgrevo_deck_maker_deck_id=6nVw31j7Gh2ldzZ8w8zT',
+    api: {
+      ...YG_API,
+      'amazonaws.com/prod/proxy/yg-decks/public/6nVw31j7Gh2ldzZ8w8zT': () => ({ ygDeck: { yg_deck_id: '6nVw31j7Gh2ldzZ8w8zT', name: 'オルターガイスト', main_cards: [1, 1, 1].map(main_card_id => ({ main_card_id })), extra_cards: [], side_cards: [] } }),
+      'cloudfront.net/api/v1/yg/cards': () => [{ main_card_id: 1, name: '灰流うらら' }],
+    },
+    html: `<a id="pills-maindeck-tab-6nVw31j7Gh2ldzZ8w8zT">メイン</a><div class="tab-content bg_main"><div class="tab-pane active" id="pills-maindeck-6nVw31j7Gh2ldzZ8w8zT"></div></div>`,
+  },
+  {
     name: 'yg-edo', url: 'https://tcg-portal.jp/yugioh/tournament-results/x', api: YG_EDO_API,
     html: `<h1>テスト遊戯王</h1><main><h3>メインデッキ</h3>${tbl([[3, '灰流うらら'], [2, '増殖するG'], [1, 'ＯＣＧだけのカード'], [1, '出たばかりのカード'], [1, '謎の魔法']])}<h3>EXデッキ</h3>${tbl([[1, 'アクセスコード・トーカー']])}<h3>サイドデッキ</h3>${tbl([[2, '無限泡影']])}</main>`,
     steps: async p => {

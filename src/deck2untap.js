@@ -9,7 +9,7 @@
  * ページのデッキを読み取り、公式英語名に変換して untap.in の Paste Deck 用テキストをコピーする。
  */
 (async () => {
-  const C2U_VER = 'v35';
+  const C2U_VER = 'v36';
   const ID = 'c2u-panel';
   // 最小化中にもう一度ブックマークを押したら、作り直さずに元の大きさに戻す（中身をそのまま残す）
   // ただし古い版のパネルが残っていたら戻さずに作り直す（新しい版を使うため）
@@ -891,11 +891,13 @@
   const GM_DECK = 'https://ockvhiwjud.execute-api.ap-northeast-1.amazonaws.com/prod/proxy/yg-decks/public/';
   const GM_CARDS = 'https://d23r8jlqp3e2gc.cloudfront.net/api/v1/yg/cards?main-card-ids=';
   const gachiMatome = async () => {
-    const idRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+    // デッキ ID は UUID（4b8e5784-…）のことも、20文字の英数字（6nVw31j7Gh2ldzZ8w8zT）のこともある
+    const idRe = /^[A-Za-z0-9_-]{8,64}$/;
     const ids = [...new Set([
       (new URLSearchParams(location.search).get('tcgrevo_deck_maker_deck_id') || ''),
-      ...[...document.querySelectorAll('[id^="pills-maindeck-"]')].map(e => e.id.slice('pills-maindeck-'.length)),
-    ].filter(x => idRe.test(x)))];
+      ...[...document.querySelectorAll('[id^="pills-maindeck-"]')].map(e => e.id.slice('pills-maindeck-'.length)).filter(x => !/^tab-/.test(x)), // pills-maindeck-tab-<ID> はタブの見出し
+      ...[...document.querySelectorAll('yg-select-buy-card[ygdeckid]')].map(e => e.getAttribute('ygdeckid')),
+    ].filter(x => idRe.test(x || '')))];
     if (/(-dm|-rd)\/?$/.test(location.pathname) || /deckrecipe-detail-(dm|yugioh-rd)/.test(location.pathname)) throw new Error('ガチまとめは遊戯王（OCG）のデッキに対応しています（デュエマ・ラッシュデュエルは未対応）');
     if (!ids.length) throw new Error('このページにデッキが見つかりませんでした（ガチまとめの遊戯王のデッキレシピ詳細、またはデッキが載った記事で実行してください）');
     status('ガチまとめのデッキを読み込み中…');

@@ -2,6 +2,9 @@
 
 新しい順。`src/deck2untap.js` の `C2U_VER` を上げたら、ここに1行足す（パネル右上に出る版番号と同じ）。
 
+## v36
+- ガチまとめ：デッキ ID が UUID でないデッキ（例 `6nVw31j7Gh2ldzZ8w8zT`）で「デッキが見つかりません」になっていたのを修正
+
 ## v35
 - **YGO Omega の絵違いも選べるように**（例：灰流うららは Omega だと3種類）。Omega 本体のカードデータから作った一覧 `data/omega-arts.json` を読み、YGOPRODeck の絵違いと合わせて並べる
 - 片方のソフトに無い絵には「Omega×」「EDOPro×」の印。EDOPro の画像サーバーと YGOPRODeck に無い絵（Omega だけの絵など）は、yaml-yugi の画像一覧を手がかりに Yugipedia の画像で見せる（例：うららの「無効です」の絵）。それも無ければ「画像なし」
