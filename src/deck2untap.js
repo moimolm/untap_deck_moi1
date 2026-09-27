@@ -477,7 +477,7 @@
         (alt.length ? `<div style="font-size:12px;margin-top:8px;border-top:1px dashed #333;padding-top:6px"><b>絵違いを選ぶ</b>（${alt.length} 種類）<span style="opacity:.7"> 押すとその絵でコピーし直します。選んだ絵はこのサイトのブラウザに覚えます。「Omega×」「EDOPro×」はそのソフトに無い絵（入れると通常の絵になるか、入りません）</span></div>` +
           alt.map(r => { const sel = r.arts.includes(Number(pref[r.base])) ? Number(pref[r.base]) : r.base; return `<div style="margin-top:6px"><div style="font-size:12px;opacity:.85">${esc(r.jp)} <span style="opacity:.6">×${r.q}・${zn[r.z]}</span></div>` +
             `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">` +
-            r.arts.map((id, j) => `<span data-edo-base="${r.base}" data-edo-art="${id}" title="${j ? '絵違い ' + j : '通常'}（${id}）" style="position:relative;display:inline-block;cursor:pointer;line-height:0;width:56px;height:79px;box-sizing:border-box;border-radius:4px;border:2px solid ${id === sel ? '#2f6fed' : 'transparent'};opacity:${id === sel ? 1 : .6}"><img src="${EDO_PIC(id)}" loading="lazy" style="width:52px;height:75px;object-fit:cover;border-radius:3px">` +
+            r.arts.map((id, j) => `<span data-edo-base="${r.base}" data-edo-art="${id}" title="${j ? '絵違い ' + j : '通常'}（${id}）" style="position:relative;display:inline-block;cursor:pointer;line-height:0;width:56px;height:79px;box-sizing:border-box;border-radius:4px;border:2px solid ${id === sel ? '#2f6fed' : 'transparent'};opacity:${id === sel ? 1 : .6}"><img src="${EDO_PIC(id)}" style="width:52px;height:75px;object-fit:cover;border-radius:3px;background:#2a2d35">` +
               (r.om && !r.om.has(id) ? '<span style="position:absolute;right:1px;top:2px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">Omega×</span>' : '') + `</span>`).join('') +
             `</div></div>`; }).join('') : '') +
         `<div class="c2u-edo-out" style="font-size:12px;margin-top:6px"></div>` +
@@ -489,7 +489,7 @@
         const badge = () => tile.insertAdjacentHTML('beforeend', '<span style="position:absolute;left:1px;bottom:2px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">EDOPro×</span>');
         im.onerror = () => {
           badge();
-          im.onerror = () => { im.remove(); tile.insertAdjacentHTML('afterbegin', `<span style="display:flex;width:52px;height:75px;align-items:center;justify-content:center;text-align:center;font-size:10px;line-height:1.3;background:#2a2d35;border-radius:3px;color:#ccc">画像なし<br>${esc(tile.title.split('（')[0])}</span>`); };
+          im.onerror = () => { im.remove(); tile.insertAdjacentHTML('afterbegin', `<span style="display:flex;width:52px;height:75px;align-items:center;justify-content:center;text-align:center;font-size:10px;line-height:1.3;background:#2a2d35;border-radius:3px;color:#ccc">画像なし<br>${esc(tile.title.split('（')[0])}<br><span style="opacity:.7">Omega で確認</span></span>`); };
           im.src = EDO_PIC2(id);
         };
       });
