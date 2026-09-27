@@ -19,7 +19,7 @@ const OP_API = {
 };
 const YG_API = {
   'yaml-yugi/cards.json': () => [
-    { konami_id: 12950, password: 14558127, name: { ja: '<ruby>灰流<rt>はる</rt></ruby>うらら', en: 'Ash Blossom & Joyous Spring' } },
+    { konami_id: 12950, password: 14558127, images: [{ index: 2, image: 'Ash-2.png' }, { index: 1, image: 'Ash-1.png' }, { index: 3, image: 'Ash-3.png' }], name: { ja: '<ruby>灰流<rt>はる</rt></ruby>うらら', en: 'Ash Blossom & Joyous Spring' } },
     { konami_id: 12308, password: 23434538, name: { ja: '増殖するＧ', en: 'Maxx "C"' } },
     { konami_id: 13631, password: 10045474, name: { ja: '無限泡影', en: 'Infinite Impermanence' } },
     { konami_id: 14007, password: 86066372, name: { ja: 'アクセスコード・トーカー', en: 'Accesscode Talker' } },

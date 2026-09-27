@@ -299,7 +299,7 @@
   let ygMem = null;
   const ygData = async (say = status) => {
     if (ygMem) return ygMem;
-    let raw = cacheGet('c2u-ygo-v3', 7 * DAY);
+    let raw = cacheGet('c2u-ygo-v4', 7 * DAY);
     if (!raw) {
       say('遊戯王のカード名データを取得中…（初回のみ・約100MB、10秒ほど）');
       const r = await fetch('https://dawnbrandbots.github.io/yaml-yugi/cards.json');
@@ -309,13 +309,15 @@
         if (!c.name || !c.name.ja) continue;
         const k = ygNorm(c.name.ja);
         if (!k || (k in raw && raw[k].split('\t')[2])) continue; // 同じ名前が並ぶときはパスコードのある方を残す
-        raw[k] = [c.name.en || '', c.konami_id || '', c.password || ''].join('\t');
+        // 絵が2つ以上あるカードは、Yugipedia の画像ファイル名（絵の順）も持つ（EDOPro・YGOPRODeck に無い絵違いの画像用）
+        const im = (c.images || []).slice().sort((a, b) => a.index - b.index).map(x => x.image || '');
+        raw[k] = [c.name.en || '', c.konami_id || '', c.password || '', im.length > 1 ? im.join('|') : ''].join('\t');
       }
-      try { localStorage.removeItem('c2u-ygo-ja2en-v1'); localStorage.removeItem('c2u-ygo-v2'); } catch (e) {} // 旧版の表は消して場所を空ける
-      cacheSet('c2u-ygo-v3', raw);
+      try { localStorage.removeItem('c2u-ygo-ja2en-v1'); localStorage.removeItem('c2u-ygo-v2'); localStorage.removeItem('c2u-ygo-v3'); } catch (e) {} // 旧版の表は消して場所を空ける
+      cacheSet('c2u-ygo-v4', raw);
     }
     const en = {}, ids = {};
-    for (const k in raw) { const [e, kid, pw] = raw[k].split('\t'); if (e) en[k] = e; if (kid || pw) ids[k] = [Number(kid) || 0, Number(pw) || 0]; }
+    for (const k in raw) { const [e, kid, pw, im] = raw[k].split('\t'); if (e) en[k] = e; if (kid || pw) ids[k] = [Number(kid) || 0, Number(pw) || 0, im ? im.split('|') : null]; }
     return (ygMem = { en, ids });
   };
   const ygNames = async () => (await ygData()).en;
@@ -361,6 +363,8 @@
   //   （そこに無い絵は EDOPro に無い可能性が高いので「EDOPro×」の印を付け、YGOPRODeck の画像で見せる）
   const EDO_PIC = id => 'https://pics.projectignis.org:2096/pics/' + id + '.jpg';
   const EDO_PIC2 = id => 'https://images.ygoprodeck.com/images/cards_small/' + id + '.jpg';
+  // Yugipedia の画像（yaml-yugi の images の順＝絵の順。絵違いのパスコードは多くが「基本＋1、＋2…」）
+  const EDO_PIC3 = (r, id) => { const f = r && r.imgs && r.imgs[id - r.base]; return f && id - r.base > 0 && id - r.base < 100 ? 'https://yugipedia.com/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=120' : ''; };
   // YGO Omega の絵違い（Omega 本体のカードデータから tools/omega-arts.py で作る。YGOPRODeck に無い絵違いもある）
   const OMEGA_ARTS = 'https://moimolm.github.io/untap_deck_moi1/data/omega-arts.json';
   let omegaMem = null;
@@ -415,7 +419,7 @@
     for (const z of ['main', 'extra', 'side']) for (const [jp, q] of zones[z] || []) {
       const r = { z, jp, q: Number(q) };
       if (fix[ygNorm(jp)]) r.pw = Number(fix[ygNorm(jp)]);
-      else { const f = ygFind(ids, jp); if (f) { r.kid = f[0]; r.pw = f[1]; } }
+      else { const f = ygFind(ids, jp); if (f) { r.kid = f[0]; r.pw = f[1]; r.imgs = f[2]; } }
       if (!r.kid && !r.pw) wait.push(r);
       rows.push(r);
     }
@@ -484,13 +488,14 @@
         `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:4px"><a href="javascript:void(0)" data-edo-act="omega" style="color:#8ab4ff">もう一度コピー</a><a href="javascript:void(0)" data-edo-act="ydke" style="color:#8ab4ff">ydke でコピー</a><a href="javascript:void(0)" data-edo-act="ydk" style="color:#8ab4ff">.ydk を保存</a></div>`;
       const out = m => { const o = info.querySelector('.c2u-edo-out'); if (o) o.innerHTML = `<span style="color:#9be29b">${m}</span>`; };
       info.querySelectorAll('[data-edo-art] img').forEach(im => {
-        // EDOPro の画像サーバーに無い → EDOPro に無い絵。YGOPRODeck の画像で見せ、それも無ければ（Omega だけの絵など）文字で見せる
-        const tile = im.parentElement, id = tile.dataset.edoArt;
-        const badge = () => tile.insertAdjacentHTML('beforeend', '<span style="position:absolute;left:1px;bottom:2px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">EDOPro×</span>');
+        // EDOPro の画像サーバーに無い → EDOPro に無い絵。YGOPRODeck → Yugipedia の画像で見せ、どれも無ければ文字で見せる
+        const tile = im.parentElement, id = Number(tile.dataset.edoArt), r = rows.find(x => x.base === Number(tile.dataset.edoBase));
+        const next = [EDO_PIC2(id), EDO_PIC3(r, id)].filter(Boolean);
         im.onerror = () => {
-          badge();
-          im.onerror = () => { im.remove(); tile.insertAdjacentHTML('afterbegin', `<span style="display:flex;width:52px;height:75px;align-items:center;justify-content:center;text-align:center;font-size:10px;line-height:1.3;background:#2a2d35;border-radius:3px;color:#ccc">画像なし<br>${esc(tile.title.split('（')[0])}<br><span style="opacity:.7">Omega で確認</span></span>`); };
-          im.src = EDO_PIC2(id);
+          if (!tile.dataset.edoX) { tile.dataset.edoX = '1'; tile.insertAdjacentHTML('beforeend', '<span style="position:absolute;left:1px;bottom:2px;font-size:9px;line-height:1.2;background:#000c;color:#ffb454;padding:0 2px;border-radius:2px">EDOPro×</span>'); }
+          if (next.length) { im.src = next.shift(); return; }
+          im.onerror = null; im.remove();
+          tile.insertAdjacentHTML('afterbegin', `<span style="display:flex;width:52px;height:75px;align-items:center;justify-content:center;text-align:center;font-size:10px;line-height:1.3;background:#2a2d35;border-radius:3px;color:#ccc">画像なし<br>${esc(tile.title.split('（')[0])}<br><span style="opacity:.7">Omega で確認</span></span>`);
         };
       });
       info.querySelectorAll('[data-edo-art]').forEach(el => el.onclick = async () => {
